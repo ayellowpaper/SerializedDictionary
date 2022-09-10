@@ -1,7 +1,5 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
@@ -23,65 +21,14 @@ namespace AYellowpaper.SerializedCollections
         private GUIStyle _keyValueStyle;
         private SerializedDictionaryAttribute _dictionaryAttribute;
         private Vector2 _scrollPosition;
-        private float _contentHeight;
-        private float _remainingOffset;
-        private float _remainingHeight;
-        private int _previouslyRenderedIndex = int.MaxValue;
         private SerializedProperty _listProperty;
-        private List<EntryData> _entryDatas = new List<EntryData>();
-        private float _labelWidth;
-
-        private class EntryData
-        {
-            public readonly float RenderOffset;
-            public readonly float DesiredHeight;
-            public readonly float ActualHeight;
-
-            public EntryData(float offset, float desiredHeight, float actualHeight)
-            {
-                RenderOffset = offset;
-                DesiredHeight = desiredHeight;
-                ActualHeight = actualHeight;
-            }
-        }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-            return 400;
-        }
-
-        private void RecalculateHeights()
-        {
-            _contentHeight = 0;
-            _entryDatas.Clear();
-            for (int i = 0; i < _listProperty.arraySize; i++)
-            {
-                SerializedProperty kvp = _listProperty.GetArrayElementAtIndex(i);
-                var keyProperty = kvp.FindPropertyRelative(KeyName);
-                var valueProperty = kvp.FindPropertyRelative(ValueName);
-
-                float desiredPropertyHeight = Mathf.Max(EditorGUI.GetPropertyHeight(keyProperty, true), EditorGUI.GetPropertyHeight(valueProperty, true)) + 2;
-                float actualHeight = desiredPropertyHeight;
-                float offset = 0;
-
-                if (_remainingOffset > 0)
-                {
-                    float deducted = Mathf.Min(actualHeight, _remainingOffset);
-                    actualHeight -= deducted;
-                    _remainingOffset -= deducted;
-                    if (_remainingOffset <= 0)
-                        offset = -deducted;
-                }
-                if (actualHeight > 0)
-                {
-                    float usedHeight = Mathf.Min(actualHeight, _remainingHeight);
-                    actualHeight = usedHeight;
-                    _remainingHeight -= usedHeight;
-                }
-
-                _contentHeight += desiredPropertyHeight;
-                _entryDatas.Add(new EntryData(offset, desiredPropertyHeight, actualHeight) );
-            }
+            float height = 68;
+            foreach (SerializedProperty arrayElement in property.FindPropertyRelative("_serializedList"))
+                height += Mathf.Max(EditorGUI.GetPropertyHeight(arrayElement.FindPropertyRelative(KeyName), true), EditorGUI.GetPropertyHeight(arrayElement.FindPropertyRelative(ValueName), true));
+            return height;
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -98,14 +45,6 @@ namespace AYellowpaper.SerializedCollections
                 _listProperty = property.FindPropertyRelative("_serializedList");
             }
 
-            _labelWidth = EditorGUIUtility.labelWidth;
-
-            Rect scrollViewOverlay = position;
-            scrollViewOverlay.y += 40;
-            scrollViewOverlay.height -= 100;
-            _scrollPosition = GUI.BeginScrollView(scrollViewOverlay, _scrollPosition, new Rect(position.x, position.y, position.width - 20, _contentHeight));
-            GUI.EndScrollView(true);
-
             _totalRect = position;
             _labelContent = new GUIContent(label);
             var dict = fieldInfo.GetValue(property.serializedObject.targetObject);
@@ -114,9 +53,7 @@ namespace AYellowpaper.SerializedCollections
             _backingList = (IList)listField.GetValue(dict);
             _keyFieldInfo = listField.FieldType.GetGenericArguments()[0].GetField(KeyName);
             EnsureListExists(_listProperty);
-            Rect listRect = position;
-            listRect.width -= 13;
-            _list.DoList(listRect);
+            _list.DoList(position);
         }
 
         private ReorderableList EnsureListExists(SerializedProperty property)
@@ -168,30 +105,16 @@ namespace AYellowpaper.SerializedCollections
 
         private float OnGetElementHeight(int index)
         {
-            if (_previouslyRenderedIndex + 1 != index)
-            {
-                _remainingOffset = _scrollPosition.y;
-                _remainingHeight = 300;
-                RecalculateHeights();
-            }
-            _previouslyRenderedIndex = index;
-
-            return _entryDatas[index].ActualHeight;
+            var thing = _listProperty.GetArrayElementAtIndex(index);
+            return Mathf.Max(EditorGUI.GetPropertyHeight(thing.FindPropertyRelative(KeyName), true), EditorGUI.GetPropertyHeight(thing.FindPropertyRelative(ValueName), true));
         }
 
         private void OnDrawElement(Rect rect, int index, bool isActive, bool isFocused)
         {
-            if (rect.height <= 0 && Event.current.type == EventType.Repaint)
-                return;
-
-            GUI.BeginClip(rect);
-            rect.x = 0;
-            rect.y = _entryDatas[index].RenderOffset;
-
             SerializedProperty kvp = _list.serializedProperty.GetArrayElementAtIndex(index);
             int spacing = 2;
-            Rect labelPosition = new Rect(rect.x, rect.y, _labelWidth - spacing, EditorGUIUtility.singleLineHeight);
-            Rect lineRect = new Rect(labelPosition.x + labelPosition.width + spacing, labelPosition.y, 1, _entryDatas[index].DesiredHeight);
+            Rect labelPosition = new Rect(rect.x, rect.y, EditorGUIUtility.labelWidth - spacing, EditorGUIUtility.singleLineHeight);
+            Rect lineRect = new Rect(labelPosition.x + labelPosition.width + spacing, labelPosition.y, 1, labelPosition.height);
             Rect result = new Rect(lineRect.x + lineRect.width + spacing, lineRect.y, rect.width - lineRect.width - labelPosition.width - spacing, labelPosition.height);
 
             var keyProperty = kvp.FindPropertyRelative(KeyName);
@@ -224,8 +147,6 @@ namespace AYellowpaper.SerializedCollections
             }
             else
                 EditorGUI.PropertyField(result, valueProperty, GUIContent.none, false);
-
-            GUI.EndClip();
         }
 
         private void OnAddToList(ReorderableList list)
