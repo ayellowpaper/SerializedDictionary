@@ -7,7 +7,7 @@ namespace AYellowpaper.SerializedCollections
     public partial class SerializedDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver, IConflictCheckable
     {
         [SerializeField]
-        private List<SerializedKeyValuePair<TKey, TValue>> _serializedList = new List<SerializedKeyValuePair<TKey, TValue>>();
+        internal List<SerializedKeyValuePair<TKey, TValue>> _serializedList = new List<SerializedKeyValuePair<TKey, TValue>>();
 
 #if !UNITY_EDITOR
         public void OnAfterDeserialize()

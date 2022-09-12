@@ -1,19 +1,43 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEditor;
 
 namespace AYellowpaper.SerializedCollections
 {
-    public static class SerializedCollectionsEditorUtility
+    internal static class SerializedCollectionsEditorUtility
     {
-        public static bool IsSomething( string path )
+        public const string EditorPrefsPrefix = "SC_";
+
+        public static bool GetPersistentBool(string path)
         {
-            return UnityEditor.EditorPrefs.GetBool("SC/" + path, false);
+            return EditorPrefs.GetBool(EditorPrefsPrefix + path, false);
         }
 
-        public static void SetIsSomething( string path, bool value )
+        public static void SetPersistentBool(string path, bool value)
         {
-            UnityEditor.EditorPrefs.SetBool("SC/" + path, value);
+            EditorPrefs.SetBool(EditorPrefsPrefix + path, value);
+        }
+
+        public static float CalculateHeight(SerializedProperty property, bool isDrawOverride)
+        {
+            if (isDrawOverride)
+            {
+                float height = 0;
+                foreach (SerializedProperty child in GetDirectChildren(property))
+                    height += EditorGUI.GetPropertyHeight(child, true);
+                return height;
+            }
+
+            return EditorGUI.GetPropertyHeight(property, true);
+        }
+
+        public static IEnumerable<SerializedProperty> GetDirectChildren(SerializedProperty property)
+        {
+            SerializedProperty end = property.GetEndProperty();
+            property.NextVisible(true);
+            do
+            {
+                yield return property;
+            } while (property.NextVisible(false) && !SerializedProperty.EqualContents(property, end));
         }
     }
 }
