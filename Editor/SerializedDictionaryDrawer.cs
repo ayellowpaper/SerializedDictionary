@@ -59,11 +59,11 @@ namespace AYellowpaper.SerializedCollections
             if (!_initialized)
             {
                 _initialized = true;
-                _keyValueStyle = new GUIStyle(EditorStyles.label);
+                _keyValueStyle = new GUIStyle(EditorStyles.toolbarButton);
                 _keyValueStyle.padding = new RectOffset(0, 0, 0, 0);
-                _keyValueStyle.border = new RectOffset(2, 2, 2, 2);
+                _keyValueStyle.border = new RectOffset(0, 0, 0, 0);
                 _keyValueStyle.alignment = TextAnchor.MiddleCenter;
-                _keyValueStyle.normal.background = Resources.Load<Texture2D>("SerializedCollections/KeyValueBackground");
+                //_keyValueStyle.normal.background = Resources.Load<Texture2D>("SerializedCollections/KeyValueBackground");
 
                 _dictionaryAttribute = fieldInfo.GetCustomAttribute<SerializedDictionaryAttribute>();
                 _listProperty = property.FindPropertyRelative(SerializedListName);
@@ -90,30 +90,42 @@ namespace AYellowpaper.SerializedCollections
             _labelContent = EditorGUI.BeginProperty(topRect, _labelContent, _list.serializedProperty);
             EditorGUI.LabelField(topRect, _labelContent);
 
+            Rect bottomRect = _totalRect;
+            bottomRect.x += 1;
+            bottomRect.width -= 1;
+            bottomRect.y = topRect.y + topRect.height;
+            bottomRect.height = rect.height - topRect.height;
+
+            float width = EditorGUIUtility.labelWidth + 22;
+            Rect leftRect = new Rect(bottomRect.x, bottomRect.y, width, bottomRect.height);
+            Rect rightRect = new Rect(bottomRect.x + width, bottomRect.y, bottomRect.width - width, bottomRect.height);
+
             if (Event.current.type == EventType.Repaint)
             {
-                Rect bottomRect = _totalRect;
-                bottomRect.y = topRect.y + topRect.height - 1;
-                bottomRect.height = rect.height - topRect.height + 2;
-
-                float width = EditorGUIUtility.labelWidth + 22;
-                Rect leftRect = new Rect(bottomRect.x, bottomRect.y, width, bottomRect.height);
-                Rect rightRect = new Rect(bottomRect.x + width, bottomRect.y, bottomRect.width - width, bottomRect.height);
-
-                _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(_dictionaryAttribute?.KeyName ?? "Key"), 0, false);
-                _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(_dictionaryAttribute?.ValueName ?? "Value"), 0, false);
+                _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(_dictionaryAttribute?.KeyName ?? "Key"), false, false, false, false);
+                _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(_dictionaryAttribute?.ValueName ?? "Value"), false, false, false, false);
             }
 
-            Rect toggleRect = topRect;
-            toggleRect.width = 14;
-            toggleRect.height = 14;
-            toggleRect.x = topRect.x + topRect.width - 14;
-            EditorGUI.BeginChangeCheck();
-            bool newValue = EditorGUI.Toggle(toggleRect, GetOverride(ValueFlag), EditorStyles.miniButton);
-            if (EditorGUI.EndChangeCheck())
-                SetOverride(ValueFlag, newValue);
+            DoDisplayTypeToggle(leftRect, KeyFlag);
+            DoDisplayTypeToggle(rightRect, ValueFlag);
+
+            Rect bottomLineRect = new Rect(bottomRect);
+            bottomLineRect.y = bottomLineRect.y + bottomLineRect.height;
+            bottomLineRect.height = 1;
+            EditorGUI.DrawRect(bottomLineRect, new Color(36 / 255f, 36 / 255f, 36 / 255f));
 
             EditorGUI.EndProperty();
+        }
+
+        private void DoDisplayTypeToggle(Rect contentRect, bool fieldFlag)
+        {
+            Rect rightRectToggle = new Rect(contentRect);
+            rightRectToggle.x += rightRectToggle.width - 18;
+            rightRectToggle.width = 18;
+            EditorGUI.BeginChangeCheck();
+            bool newValue = GUI.Toggle(rightRectToggle, GetOverride(fieldFlag), "", EditorStyles.toolbarButton);
+            if (EditorGUI.EndChangeCheck())
+                SetOverride(fieldFlag, newValue);
         }
 
         private float OnGetElementHeight(int index)
@@ -157,34 +169,54 @@ namespace AYellowpaper.SerializedCollections
             {
                 GUI.color = Color.red;
             }
-            EditorGUI.PropertyField(keyRect, keyProperty, GUIContent.none, true);
+
+
+
+
+            DrawElement(keyRect, keyProperty, GetOverride(KeyFlag) ? DisplayType.ListDrawer : DisplayType.FieldNoLabel);
+
             EditorGUI.DrawRect(lineRect, new Color(36 / 255f, 36 / 255f, 36 / 255f));
             GUI.color = prevColor;
 
-            if (valueProperty.hasVisibleChildren)
+            DrawElement(valueRect, valueProperty, GetOverride(ValueFlag) ? DisplayType.ListDrawer : DisplayType.Field);
+        }
+
+        private void DrawElement(Rect valueRect, SerializedProperty property, DisplayType displayType)
+        {
+            switch (displayType)
             {
-                bool overrideCustomDrawer = GetOverride(ValueFlag);
-                if (overrideCustomDrawer)
-                {
+                case DisplayType.Field:
+                    EditorGUI.PropertyField(valueRect, property, true);
+                    break;
+                case DisplayType.FieldNoLabel:
+                    EditorGUI.PropertyField(valueRect, property, GUIContent.none, true);
+                    break;
+                case DisplayType.ListDrawer:
+                    float prevLabelWidth = EditorGUIUtility.labelWidth;
+                    EditorGUIUtility.labelWidth = valueRect.width * 0.4f;
                     Rect childRect = new Rect(valueRect);
-                    foreach (SerializedProperty prop in SerializedCollectionsEditorUtility.GetDirectChildren(valueProperty))
+                    foreach (SerializedProperty prop in SerializedCollectionsEditorUtility.GetDirectChildren(property))
                     {
                         float height = EditorGUI.GetPropertyHeight(prop, true);
                         childRect.height = height;
                         EditorGUI.PropertyField(childRect, prop, true);
                         childRect.y += childRect.height;
                     }
-                }
-                else
-                    EditorGUI.PropertyField(valueRect, valueProperty, true);
+                    EditorGUIUtility.labelWidth = prevLabelWidth;
+                    break;
             }
-            else
-                EditorGUI.PropertyField(valueRect, valueProperty, GUIContent.none, false);
         }
 
         private void OnAddToList(ReorderableList list)
         {
             _list.serializedProperty.InsertArrayElementAtIndex(list.serializedProperty.arraySize);
+        }
+
+        public enum DisplayType
+        {
+            Field,
+            FieldNoLabel,
+            ListDrawer
         }
     }
 }

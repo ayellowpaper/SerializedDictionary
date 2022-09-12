@@ -32,6 +32,12 @@ namespace AYellowpaper.SerializedCollections
 
         public static IEnumerable<SerializedProperty> GetDirectChildren(SerializedProperty property)
         {
+            if (!property.hasVisibleChildren)
+            {
+                yield return property;
+                yield break;
+            }
+
             SerializedProperty end = property.GetEndProperty();
             property.NextVisible(true);
             do
