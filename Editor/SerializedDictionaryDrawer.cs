@@ -106,8 +106,11 @@ namespace AYellowpaper.SerializedCollections
                 _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(_dictionaryAttribute?.ValueName ?? "Value"), false, false, false, false);
             }
 
-            DoDisplayTypeToggle(leftRect, KeyFlag);
-            DoDisplayTypeToggle(rightRect, ValueFlag);
+            if (_listProperty.arraySize > 0)
+            {
+                DoDisplayTypeToggle(leftRect, KeyFlag);
+                DoDisplayTypeToggle(rightRect, ValueFlag);
+            }
 
             Rect bottomLineRect = new Rect(bottomRect);
             bottomLineRect.y = bottomLineRect.y + bottomLineRect.height;
@@ -119,6 +122,10 @@ namespace AYellowpaper.SerializedCollections
 
         private void DoDisplayTypeToggle(Rect contentRect, bool fieldFlag)
         {
+            bool hasChildren = _listProperty.GetArrayElementAtIndex(0).FindPropertyRelative(fieldFlag == KeyFlag ? KeyName : ValueName).hasVisibleChildren;
+            if (!hasChildren)
+                return;
+
             Rect rightRectToggle = new Rect(contentRect);
             rightRectToggle.x += rightRectToggle.width - 18;
             rightRectToggle.width = 18;
@@ -169,9 +176,6 @@ namespace AYellowpaper.SerializedCollections
             {
                 GUI.color = Color.red;
             }
-
-
-
 
             DrawElement(keyRect, keyProperty, GetOverride(KeyFlag) ? DisplayType.ListDrawer : DisplayType.FieldNoLabel);
 

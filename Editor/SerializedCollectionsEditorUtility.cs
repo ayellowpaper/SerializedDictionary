@@ -12,6 +12,11 @@ namespace AYellowpaper.SerializedCollections
             return EditorPrefs.GetBool(EditorPrefsPrefix + path, false);
         }
 
+        public static bool HasKey(string path)
+        {
+            return EditorPrefs.HasKey( EditorPrefsPrefix + path );
+        }
+
         public static void SetPersistentBool(string path, bool value)
         {
             EditorPrefs.SetBool(EditorPrefsPrefix + path, value);
