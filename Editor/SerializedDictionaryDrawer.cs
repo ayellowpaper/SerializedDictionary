@@ -177,12 +177,12 @@ namespace AYellowpaper.SerializedCollections
                 GUI.color = Color.red;
             }
 
-            DrawElement(keyRect, keyProperty, GetOverride(KeyFlag) ? DisplayType.ListDrawer : DisplayType.FieldNoLabel);
+            DrawElement(keyRect, keyProperty, GetOverride(KeyFlag) && keyProperty.hasVisibleChildren ? DisplayType.ListDrawer : DisplayType.FieldNoLabel);
 
             EditorGUI.DrawRect(lineRect, new Color(36 / 255f, 36 / 255f, 36 / 255f));
             GUI.color = prevColor;
 
-            DrawElement(valueRect, valueProperty, GetOverride(ValueFlag) ? DisplayType.ListDrawer : DisplayType.Field);
+            DrawElement(valueRect, valueProperty, GetOverride(ValueFlag) && valueProperty.hasVisibleChildren ? DisplayType.ListDrawer : DisplayType.Field);
         }
 
         private void DrawElement(Rect valueRect, SerializedProperty property, DisplayType displayType)
