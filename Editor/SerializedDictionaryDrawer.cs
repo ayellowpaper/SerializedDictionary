@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Reflection;
 using UnityEditor;
 using UnityEditorInternal;
@@ -12,12 +13,13 @@ namespace AYellowpaper.SerializedCollections
         public const string KeyName = nameof(SerializedKeyValuePair<int, int>.Key);
         public const string ValueName = nameof(SerializedKeyValuePair<int, int>.Value);
         public const string SerializedListName = nameof(SerializedDictionary<int, int>._serializedList);
-
+        public const int NotExpandedHeight = 20;
         private const bool KeyFlag = true;
         private const bool ValueFlag = false;
 
         private bool _initialized = false;
-        private ReorderableList _list;
+        private ReorderableList _expandedList;
+        private ReorderableList _unexpandedList;
         private IList _backingList;
         private IConflictCheckable _conflictChecker;
         private FieldInfo _keyFieldInfo;
@@ -29,30 +31,13 @@ namespace AYellowpaper.SerializedCollections
         private ElementDisplaySettings _keySettings;
         private ElementDisplaySettings _valueSettings;
 
-        private class ElementDisplaySettings
-        {
-            public readonly string PersistentPath;
-            public readonly DisplayType DisplayType;
-            public readonly bool HasListDrawerToggle;
-            public bool ShowAsList => HasListDrawerToggle && IsListToggleActive;
-            public bool IsListToggleActive
-            {
-                get => SerializedCollectionsEditorUtility.GetPersistentBool(PersistentPath, false);
-                set => SerializedCollectionsEditorUtility.SetPersistentBool(PersistentPath, value);
-            }
-            public DisplayType EffectiveDisplayType => ShowAsList ? DisplayType.List : DisplayType;
-
-            public ElementDisplaySettings(string persistentPath, DisplayType displayType, bool hasListDrawerToggle)
-            {
-                PersistentPath = persistentPath;
-                DisplayType = displayType;
-                HasListDrawerToggle = hasListDrawerToggle;
-            }
-        }
-
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             InitializeIfNeeded(property);
+
+            if (!_listProperty.isExpanded)
+                return NotExpandedHeight;
+
             float height = 68;
             if (_listProperty.arraySize == 0)
                 height += 20;
@@ -84,7 +69,19 @@ namespace AYellowpaper.SerializedCollections
 
             _totalRect = position;
             _labelContent = new GUIContent(label);
-            _list.DoList(position);
+
+
+            //_list.DoList(position);
+
+            if (_listProperty.isExpanded)
+                _expandedList.DoList(position);
+            else
+            {
+                using (new GUI.ClipScope(new Rect(0, position.y, position.width + position.x, NotExpandedHeight)))
+                {
+                    _unexpandedList.DoList(position.WithY(0));
+                }
+            }
         }
 
         private void InitializeIfNeeded(SerializedProperty property)
@@ -101,12 +98,8 @@ namespace AYellowpaper.SerializedCollections
                 _dictionaryAttribute = fieldInfo.GetCustomAttribute<SerializedDictionaryAttribute>();
                 _listProperty = property.FindPropertyRelative(SerializedListName);
 
-                _list = new ReorderableList(property.serializedObject, _listProperty, true, true, true, true);
-                _list.onAddCallback += OnAddToList;
-                _list.drawElementCallback += OnDrawElement;
-                _list.elementHeightCallback += OnGetElementHeight;
-                _list.drawHeaderCallback += OnDrawHeader;
-                _list.headerHeight *= 2;
+                _expandedList = MakeReorderableList();
+                _unexpandedList = MakeUnexpandedList();
 
                 var dict = fieldInfo.GetValue(property.serializedObject.targetObject);
                 _conflictChecker = dict as IConflictCheckable;
@@ -120,11 +113,42 @@ namespace AYellowpaper.SerializedCollections
                 var genericArgs = fieldInfo.FieldType.GetGenericArguments();
                 var firstProperty = _listProperty.GetArrayElementAtIndex(0);
                 _keySettings = CreateDisplaySettings(GetElementProperty(firstProperty, true), genericArgs[0]);
+                _keySettings.DisplayName = _dictionaryAttribute?.KeyName ?? "Key";
                 _valueSettings = CreateDisplaySettings(GetElementProperty(firstProperty, false), genericArgs[1]);
+                _valueSettings.DisplayName = _dictionaryAttribute?.ValueName ?? "Value";
             }
         }
 
-        private ElementDisplaySettings CreateDisplaySettings(SerializedProperty property, System.Type type)
+        private void DrawUnexpandedHeader(Rect rect)
+        {
+            _labelContent = EditorGUI.BeginProperty(rect, _labelContent, _listProperty);
+            _listProperty.isExpanded = EditorGUI.Foldout(rect.WithX(rect.x - 5), _listProperty.isExpanded, _labelContent, true);
+            EditorGUI.EndProperty();
+        }
+
+        private ReorderableList MakeReorderableList()
+        {
+            var list = new ReorderableList(_listProperty.serializedObject, _listProperty, true, true, true, true);
+            list.onAddCallback += OnAddToList;
+            list.drawElementCallback += OnDrawElement;
+            list.elementHeightCallback += OnGetElementHeight;
+            list.drawHeaderCallback += OnDrawHeader;
+            list.headerHeight *= 2;
+            return list;
+        }
+
+        private ReorderableList MakeUnexpandedList()
+        {
+            var list = new ReorderableList(new System.Collections.Generic.List<int>(), typeof(int));
+            list.drawHeaderCallback = DrawUnexpandedHeader;
+            list.drawNoneElementCallback = (x) => { };
+            list.drawFooterCallback = (x) => { };
+            list.elementHeight = 0;
+            list.footerHeight = 0;
+            return list;
+        }
+
+        private ElementDisplaySettings CreateDisplaySettings(SerializedProperty property, Type type)
         {
             bool hasCustomEditor = SerializedCollectionsEditorUtility.HasDrawerForType(type);
             bool isGenericWithChildren = property.propertyType == SerializedPropertyType.Generic && property.hasVisibleChildren;
@@ -139,10 +163,9 @@ namespace AYellowpaper.SerializedCollections
 
         private void OnDrawHeader(Rect rect)
         {
-            Rect topRect = rect;
-            topRect.height /= 2;
-            _labelContent = EditorGUI.BeginProperty(topRect, _labelContent, _list.serializedProperty);
-            EditorGUI.LabelField(topRect, _labelContent);
+            Rect topRect = rect.WithHeight(rect.height / 2);
+            _labelContent = EditorGUI.BeginProperty(topRect, _labelContent, _expandedList.serializedProperty);
+            _listProperty.isExpanded = EditorGUI.Foldout(topRect.WithX(topRect.x - 5), _listProperty.isExpanded, _labelContent, true);
 
             Rect bottomRect = _totalRect;
             bottomRect.x += 1;
@@ -156,8 +179,8 @@ namespace AYellowpaper.SerializedCollections
 
             if (Event.current.type == EventType.Repaint)
             {
-                _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(_dictionaryAttribute?.KeyName ?? "Key"), false, false, false, false);
-                _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(_dictionaryAttribute?.ValueName ?? "Value"), false, false, false, false);
+                _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(GetDisplaySettings(KeyFlag).DisplayName), false, false, false, false);
+                _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(GetDisplaySettings(ValueFlag).DisplayName), false, false, false, false);
             }
 
             if (_listProperty.arraySize > 0)
@@ -198,7 +221,7 @@ namespace AYellowpaper.SerializedCollections
 
         private void OnDrawElement(Rect rect, int index, bool isActive, bool isFocused)
         {
-            SerializedProperty kvp = _list.serializedProperty.GetArrayElementAtIndex(index);
+            SerializedProperty kvp = _expandedList.serializedProperty.GetArrayElementAtIndex(index);
             int leftSpace = 2;
             int lineWidth = 1;
             int rightSpace = 12;
@@ -270,14 +293,7 @@ namespace AYellowpaper.SerializedCollections
 
         private void OnAddToList(ReorderableList list)
         {
-            _list.serializedProperty.InsertArrayElementAtIndex(list.serializedProperty.arraySize);
-        }
-
-        public enum DisplayType
-        {
-            Property,
-            PropertyNoLabel,
-            List
+            _expandedList.serializedProperty.InsertArrayElementAtIndex(list.serializedProperty.arraySize);
         }
     }
 }
