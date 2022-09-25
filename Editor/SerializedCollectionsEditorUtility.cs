@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
 using UnityEditor;
 
 namespace AYellowpaper.SerializedCollections
@@ -7,9 +9,9 @@ namespace AYellowpaper.SerializedCollections
     {
         public const string EditorPrefsPrefix = "SC_";
 
-        public static bool GetPersistentBool(string path)
+        public static bool GetPersistentBool(string path, bool defaultValue)
         {
-            return EditorPrefs.GetBool(EditorPrefsPrefix + path, false);
+            return EditorPrefs.GetBool(EditorPrefsPrefix + path, defaultValue);
         }
 
         public static bool HasKey(string path)
@@ -22,9 +24,9 @@ namespace AYellowpaper.SerializedCollections
             EditorPrefs.SetBool(EditorPrefsPrefix + path, value);
         }
 
-        public static float CalculateHeight(SerializedProperty property, bool isDrawOverride)
+        public static float CalculateHeight(SerializedProperty property, bool drawAsList)
         {
-            if (isDrawOverride)
+            if (drawAsList)
             {
                 float height = 0;
                 foreach (SerializedProperty child in GetDirectChildren(property))
@@ -49,6 +51,17 @@ namespace AYellowpaper.SerializedCollections
             {
                 yield return property;
             } while (property.NextVisible(false) && !SerializedProperty.EqualContents(property, end));
+        }
+
+        public static bool HasDrawerForType(Type type)
+        {
+            Type attributeUtilityType = typeof(SerializedProperty).Assembly.GetType("UnityEditor.ScriptAttributeUtility");
+            if (attributeUtilityType == null)
+                return false;
+            var getDrawerMethod = attributeUtilityType.GetMethod("GetDrawerTypeForType", BindingFlags.Static | BindingFlags.NonPublic);
+            if (getDrawerMethod == null)
+                return false;
+            return getDrawerMethod.Invoke(null, new object[] { type }) != null;
         }
     }
 }

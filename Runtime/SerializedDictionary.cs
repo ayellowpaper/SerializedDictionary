@@ -16,6 +16,8 @@ namespace AYellowpaper.SerializedCollections
 
             foreach (var kvp in _serializedList)
                 Add(kvp.Key, kvp.Value);
+
+            _serializedList.Clear();
         }
 
         public void OnBeforeSerialize()
