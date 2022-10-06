@@ -178,12 +178,13 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             bool hasCustomEditor = SerializedCollectionsEditorUtility.HasDrawerForType(type);
             bool isGenericWithChildren = property.propertyType == SerializedPropertyType.Generic && property.hasVisibleChildren;
+            bool isArray = property.isArray && property.propertyType != SerializedPropertyType.String;
+            bool canToggleListDrawer = isArray || (isGenericWithChildren && hasCustomEditor);
             DisplayType displayType = DisplayType.PropertyNoLabel;
-            if (property.isArray && !hasCustomEditor)
+            if (canToggleListDrawer)
                 displayType = DisplayType.Property;
-            else if (!property.isArray && isGenericWithChildren && !hasCustomEditor)
+            else if (!isArray && isGenericWithChildren && !hasCustomEditor)
                 displayType = DisplayType.List;
-            bool canToggleListDrawer = property.isArray || (isGenericWithChildren && hasCustomEditor);
             return new ElementDisplaySettings(property.propertyPath, displayType, canToggleListDrawer);
         }
 
