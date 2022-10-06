@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
 
-namespace AYellowpaper.SerializedCollections
+namespace AYellowpaper.SerializedCollections.Editor
 {
     internal static class SerializedCollectionsEditorUtility
     {

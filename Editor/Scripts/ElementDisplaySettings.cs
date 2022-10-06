@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace AYellowpaper.SerializedCollections
+namespace AYellowpaper.SerializedCollections.Editor
 {
     internal class ElementDisplaySettings
     {
-        public readonly string PersistentPath;
-        public readonly DisplayType DisplayType;
-        public readonly bool HasListDrawerToggle;
+        public string PersistentPath;
+        public DisplayType DisplayType;
+        public bool HasListDrawerToggle;
         public string DisplayName;
 
         public bool ShowAsList => HasListDrawerToggle && IsListToggleActive;

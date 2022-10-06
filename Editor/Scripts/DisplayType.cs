@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace AYellowpaper.SerializedCollections
+namespace AYellowpaper.SerializedCollections.Editor
 {
     public enum DisplayType
     {

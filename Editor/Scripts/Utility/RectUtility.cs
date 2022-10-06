@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace AYellowpaper.SerializedCollections
+namespace AYellowpaper.SerializedCollections.Editor
 {
     public static class RectUtility
     {
@@ -17,5 +17,7 @@ namespace AYellowpaper.SerializedCollections
 
         public static Rect WithXAndWidth(this Rect rect, float x, float width) => new Rect(x, rect.y, width, rect.height);
         public static Rect WithYAndHeight(this Rect rect, float y, float height) => new Rect(rect.x, y, rect.width, height);
+
+        public static Rect Append(this Rect rect, float width) => new Rect(rect.x + rect.width, rect.y, width, rect.height);
     }
 }
