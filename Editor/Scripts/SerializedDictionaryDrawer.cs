@@ -15,9 +15,11 @@ namespace AYellowpaper.SerializedCollections.Editor
         public const string KeyName = nameof(SerializedKeyValuePair<int, int>.Key);
         public const string ValueName = nameof(SerializedKeyValuePair<int, int>.Value);
         public const string SerializedListName = nameof(SerializedDictionary<int, int>._serializedList);
-        public const int NotExpandedHeight = 20;
+
+        private const int NotExpandedHeight = 20;
         private const bool KeyFlag = true;
         private const bool ValueFlag = false;
+        private static readonly List<int> NoEntriesList = new List<int>();
 
         private bool _initialized = false;
         private ReorderableList _expandedList;
@@ -25,23 +27,24 @@ namespace AYellowpaper.SerializedCollections.Editor
         private IList _backingList;
         private IConflictCheckable _conflictChecker;
         private FieldInfo _keyFieldInfo;
-        private GUIContent _labelContent;
+        private GUIContent _label;
         private Rect _totalRect;
         private GUIStyle _keyValueStyle;
         private SerializedDictionaryAttribute _dictionaryAttribute;
         private SerializedProperty _listProperty;
-        private ElementDisplaySettings _keySettings;
-        private ElementDisplaySettings _valueSettings;
+        private ElementSettings _keySettings;
+        private ElementSettings _valueSettings;
         private List<int> _listOfIndices;
         private PagingElement _pagingElement;
         private int _elementsPerPage = 5;
+        private int _lastPropertyLength = -1;
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             InitializeIfNeeded(property);
 
             _totalRect = position;
-            _labelContent = new GUIContent(label);
+            _label = new GUIContent(label);
 
             if (_listProperty.isExpanded)
                 _expandedList.DoList(position);
@@ -65,7 +68,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             if (_listProperty.arraySize == 0)
                 height += 20;
             foreach (int index in _listOfIndices)
-                height += CalculateHeightOfElement(_listProperty.GetArrayElementAtIndex(index), GetDisplaySettings(KeyFlag).EffectiveDisplayType == DisplayType.List ? true : false, GetDisplaySettings(ValueFlag).EffectiveDisplayType == DisplayType.List ? true : false);
+                height += CalculateHeightOfElement(_listProperty.GetArrayElementAtIndex(index), GetElementSettings(KeyFlag).EffectiveDisplayType == DisplayType.List ? true : false, GetElementSettings(ValueFlag).EffectiveDisplayType == DisplayType.List ? true : false);
             return height;
         }
 
@@ -74,7 +77,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             return property.FindPropertyRelative(fieldFlag == KeyFlag ? KeyName : ValueName);
         }
 
-        private ElementDisplaySettings GetDisplaySettings(bool fieldFlag)
+        private ElementSettings GetElementSettings(bool fieldFlag)
         {
             return fieldFlag == KeyFlag ? _keySettings : _valueSettings;
         }
@@ -95,41 +98,52 @@ namespace AYellowpaper.SerializedCollections.Editor
                 _keyValueStyle.padding = new RectOffset(0, 0, 0, 0);
                 _keyValueStyle.border = new RectOffset(0, 0, 0, 0);
                 _keyValueStyle.alignment = TextAnchor.MiddleCenter;
-                //_keyValueStyle.normal.background = Resources.Load<Texture2D>("SerializedCollections/KeyValueBackground");
 
                 _dictionaryAttribute = fieldInfo.GetCustomAttribute<SerializedDictionaryAttribute>();
                 _listProperty = property.FindPropertyRelative(SerializedListName);
 
                 _pagingElement = new PagingElement();
                 _listOfIndices = new List<int>();
-                UpdatePagingElements();
+                UpdatePaging();
 
-                _expandedList = MakeReorderableList();
+                _expandedList = MakeList();
                 _unexpandedList = MakeUnexpandedList();
 
-                var dict = fieldInfo.GetValue(property.serializedObject.targetObject);
-                _conflictChecker = dict as IConflictCheckable;
+                var dictionary = fieldInfo.GetValue(property.serializedObject.targetObject);
+                _conflictChecker = dictionary as IConflictCheckable;
                 var listField = fieldInfo.FieldType.GetField(SerializedListName, BindingFlags.Instance | BindingFlags.NonPublic);
                 _keyFieldInfo = listField.FieldType.GetGenericArguments()[0].GetField(KeyName);
-                _backingList = (IList)listField.GetValue(dict);
-            }
+                _backingList = (IList)listField.GetValue(dictionary);
 
-            if (_keySettings == null && _listProperty.arraySize > 0)
-            {
-                var genericArgs = fieldInfo.FieldType.GetGenericArguments();
-                var firstProperty = _listProperty.GetArrayElementAtIndex(0);
-                _keySettings = CreateDisplaySettings(GetElementProperty(firstProperty, true), genericArgs[0]);
-                _keySettings.DisplayName = _dictionaryAttribute?.KeyName ?? "Key";
-                _valueSettings = CreateDisplaySettings(GetElementProperty(firstProperty, false), genericArgs[1]);
-                _valueSettings.DisplayName = _dictionaryAttribute?.ValueName ?? "Value";
+                void CreateDisplaySettings()
+                {
+                    var genericArgs = fieldInfo.FieldType.GetGenericArguments();
+                    var firstProperty = _listProperty.GetArrayElementAtIndex(0);
+                    _keySettings = this.CreateDisplaySettings(GetElementProperty(firstProperty, true), genericArgs[0]);
+                    _keySettings.DisplayName = _dictionaryAttribute?.KeyName ?? "Key";
+                    _valueSettings = this.CreateDisplaySettings(GetElementProperty(firstProperty, false), genericArgs[1]);
+                    _valueSettings.DisplayName = _dictionaryAttribute?.ValueName ?? "Value";
+                }
+
+                if (_listProperty.arraySize == 0)
+                {
+                    _listProperty.InsertArrayElementAtIndex(0);
+                    CreateDisplaySettings();
+                    _listProperty.DeleteArrayElementAtIndex(0);
+                }
+                else
+                    CreateDisplaySettings();
             }
 
             // TODO: Is there a better solution to check for Revert/delete/add?
-            if (_listOfIndices.Count != _listProperty.arraySize)
-                UpdatePagingElements();
+            if (_lastPropertyLength != _listProperty.arraySize)
+            {
+                _lastPropertyLength = _listProperty.arraySize;
+                UpdatePaging();
+            }
         }
 
-        private void UpdatePagingElements()
+        private void UpdatePaging()
         {
             _pagingElement.PageCount = Mathf.Max(1, Mathf.CeilToInt((float)_listProperty.arraySize / _elementsPerPage));
 
@@ -144,15 +158,14 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void DrawUnexpandedHeader(Rect rect)
         {
-            _labelContent = EditorGUI.BeginProperty(rect, _labelContent, _listProperty);
-            _listProperty.isExpanded = EditorGUI.Foldout(rect.WithX(rect.x - 5), _listProperty.isExpanded, _labelContent, true);
+            EditorGUI.BeginProperty(rect, _label, _listProperty);
+            _listProperty.isExpanded = EditorGUI.Foldout(rect.WithX(rect.x - 5), _listProperty.isExpanded, _label, true);
             EditorGUI.EndProperty();
         }
 
-        private ReorderableList MakeReorderableList()
+        private ReorderableList MakeList()
         {
             var list = new ReorderableList(_listOfIndices, typeof(int), true, true, true, true);
-            //var list = new ReorderableList(_listProperty.serializedObject, _listProperty, true, true, true, true);
             list.onAddCallback += OnAdd;
             list.onRemoveCallback += OnRemove;
             list.onReorderCallbackWithDetails += OnReorder;
@@ -165,16 +178,12 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private ReorderableList MakeUnexpandedList()
         {
-            var list = new ReorderableList(new System.Collections.Generic.List<int>(), typeof(int));
+            var list = new ReorderableList(NoEntriesList, typeof(int));
             list.drawHeaderCallback = DrawUnexpandedHeader;
-            list.drawNoneElementCallback = (x) => { };
-            list.drawFooterCallback = (x) => { };
-            list.elementHeight = 0;
-            list.footerHeight = 0;
             return list;
         }
 
-        private ElementDisplaySettings CreateDisplaySettings(SerializedProperty property, Type type)
+        private ElementSettings CreateDisplaySettings(SerializedProperty property, Type type)
         {
             bool hasCustomEditor = SerializedCollectionsEditorUtility.HasDrawerForType(type);
             bool isGenericWithChildren = property.propertyType == SerializedPropertyType.Generic && property.hasVisibleChildren;
@@ -185,7 +194,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 displayType = DisplayType.Property;
             else if (!isArray && isGenericWithChildren && !hasCustomEditor)
                 displayType = DisplayType.List;
-            return new ElementDisplaySettings(property.propertyPath, displayType, canToggleListDrawer);
+            return new ElementSettings(property.propertyPath, displayType, canToggleListDrawer);
         }
 
         private void OnDrawHeader(Rect rect)
@@ -195,11 +204,14 @@ namespace AYellowpaper.SerializedCollections.Editor
             float pagingWidth = _pagingElement.GetDesiredWidth();
             if (_pagingElement.PageCount > 1)
             {
+                EditorGUI.BeginChangeCheck();
                 _pagingElement.OnGUI(topRect.WithXAndWidth(topRect.x + topRect.width - pagingWidth, pagingWidth));
+                if (EditorGUI.EndChangeCheck())
+                    UpdatePaging();
             }
 
-            _labelContent = EditorGUI.BeginProperty(topRect, _labelContent, _listProperty);
-            _listProperty.isExpanded = EditorGUI.Foldout(topRect.WithXAndWidth(topRect.x - 5, topRect.width - pagingWidth), _listProperty.isExpanded, _labelContent, true);
+            EditorGUI.BeginProperty(topRect, _label, _listProperty);
+            _listProperty.isExpanded = EditorGUI.Foldout(topRect.WithXAndWidth(topRect.x - 5, topRect.width - pagingWidth), _listProperty.isExpanded, _label, true);
 
             Rect bottomRect = new Rect(_totalRect.x + 1, topRect.y + topRect.height, _totalRect.width - 1, rect.height - topRect.height);
 
@@ -209,8 +221,8 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             if (Event.current.type == EventType.Repaint && _keySettings != null)
             {
-                _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(GetDisplaySettings(KeyFlag).DisplayName), false, false, false, false);
-                _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(GetDisplaySettings(ValueFlag).DisplayName), false, false, false, false);
+                _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(GetElementSettings(KeyFlag).DisplayName), false, false, false, false);
+                _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(GetElementSettings(ValueFlag).DisplayName), false, false, false, false);
             }
 
             if (_listProperty.arraySize > 0)
@@ -229,7 +241,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void DoDisplayTypeToggle(Rect contentRect, bool fieldFlag)
         {
-            var displaySettings = GetDisplaySettings(fieldFlag);
+            var displaySettings = GetElementSettings(fieldFlag);
 
             if (displaySettings.HasListDrawerToggle)
             {
@@ -246,7 +258,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         private float OnGetElementHeight(int index)
         {
             var element = _listProperty.GetArrayElementAtIndex(_listOfIndices[index]);
-            return CalculateHeightOfElement(element, GetDisplaySettings(KeyFlag).EffectiveDisplayType == DisplayType.List ? true : false, GetDisplaySettings(ValueFlag).EffectiveDisplayType == DisplayType.List ? true : false);
+            return CalculateHeightOfElement(element, GetElementSettings(KeyFlag).EffectiveDisplayType == DisplayType.List ? true : false, GetElementSettings(ValueFlag).EffectiveDisplayType == DisplayType.List ? true : false);
         }
 
         private void OnDrawElement(Rect rect, int index, bool isActive, bool isFocused)
@@ -264,6 +276,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             var keyProperty = kvp.FindPropertyRelative(KeyName);
             var valueProperty = kvp.FindPropertyRelative(ValueName);
+
             var keyObject = _keyFieldInfo.GetValue(_backingList[actualIndex]);
             Color prevColor = GUI.color;
             int firstConflict = _conflictChecker.GetFirstConflict(keyObject);
@@ -276,13 +289,13 @@ namespace AYellowpaper.SerializedCollections.Editor
                 GUI.color = Color.red;
             }
 
-            var keyDisplaySettings = GetDisplaySettings(KeyFlag);
+            var keyDisplaySettings = GetElementSettings(KeyFlag);
             DrawGroupedElement(keyRect, 20, keyProperty, keyDisplaySettings.EffectiveDisplayType);
 
             EditorGUI.DrawRect(lineRect, new Color(36 / 255f, 36 / 255f, 36 / 255f));
             GUI.color = prevColor;
 
-            var valueDisplaySettings = GetDisplaySettings(ValueFlag);
+            var valueDisplaySettings = GetElementSettings(ValueFlag);
             DrawGroupedElement(valueRect, rightSpace, valueProperty, valueDisplaySettings.EffectiveDisplayType);
         }
 
@@ -331,15 +344,15 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void OnReorder(ReorderableList list, int oldIndex, int newIndex)
         {
+            UpdatePaging();
             _listProperty.MoveArrayElement(_listOfIndices[oldIndex], _listOfIndices[newIndex]);
-            UpdatePagingElements();
         }
 
         private void OnRemove(ReorderableList list)
         {
             int actualIndex = _listOfIndices[list.index];
             _listProperty.DeleteArrayElementAtIndex(actualIndex);
-            UpdatePagingElements();
+            UpdatePaging();
             if (actualIndex >= _listProperty.arraySize)
                 list.index = _listOfIndices.Count - 1;
         }
