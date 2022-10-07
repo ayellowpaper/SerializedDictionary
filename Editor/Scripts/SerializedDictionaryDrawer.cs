@@ -301,11 +301,23 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void DrawGroupedElement(Rect rect, int space, SerializedProperty property, DisplayType displayType)
         {
+            const int propertyOffset = 5;
+
             using (new LabelWidth(rect.width * 0.4f))
             {
                 float height = SerializedCollectionsEditorUtility.CalculateHeight(property.Copy(), displayType == DisplayType.List ? true : false);
-                GUI.BeginGroup(new Rect(rect.x - space, rect.y, rect.width + space, height));
-                DrawElement(new Rect(space, 0, rect.width, rect.height), property, displayType);
+                Rect groupRect = new Rect(rect.x - space, rect.y, rect.width + space, height);
+                GUI.BeginGroup(groupRect);
+
+                Rect elementRect = new Rect(space, 0, rect.width, height);
+                DrawElement(elementRect, property, displayType);
+
+                // Apply clip for property here as to not show the blue line for modification but still allow reverting the property. Reduces visual noise
+                GUI.BeginClip(elementRect.WithXAndWidth(-propertyOffset, propertyOffset + space));
+                EditorGUI.BeginProperty(elementRect.WithXAndWidth(propertyOffset, space), GUIContent.none, property);
+                EditorGUI.EndProperty();
+                GUI.EndClip();
+
                 GUI.EndGroup();
             }
         }
@@ -323,7 +335,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 case DisplayType.List:
 
                     Rect childRect = new Rect(rect);
-                    foreach (SerializedProperty prop in SerializedCollectionsEditorUtility.GetDirectChildren(property))
+                    foreach (SerializedProperty prop in SerializedCollectionsEditorUtility.GetDirectChildren(property.Copy()))
                     {
                         float height = EditorGUI.GetPropertyHeight(prop, true);
                         childRect.height = height;
