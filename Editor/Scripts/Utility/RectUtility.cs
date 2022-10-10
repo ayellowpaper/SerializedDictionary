@@ -19,5 +19,6 @@ namespace AYellowpaper.SerializedCollections.Editor
         public static Rect WithYAndHeight(this Rect rect, float y, float height) => new Rect(rect.x, y, rect.width, height);
 
         public static Rect Append(this Rect rect, float width) => new Rect(rect.x + rect.width, rect.y, width, rect.height);
+        public static Rect Prepend(this Rect rect, float width) => new Rect(rect.x - width, rect.y, width, rect.height);
     }
 }

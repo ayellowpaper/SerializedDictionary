@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
+using System.Linq;
 
 namespace AYellowpaper.SerializedCollections.Editor
 {
@@ -51,6 +52,11 @@ namespace AYellowpaper.SerializedCollections.Editor
             {
                 yield return property;
             } while (property.NextVisible(false) && !SerializedProperty.EqualContents(property, end));
+        }
+
+        public static int GetActualArraySize(SerializedProperty arrayProperty)
+        {
+            return GetDirectChildren(arrayProperty).Count() - 1;
         }
 
         public static bool HasDrawerForType(Type type)
