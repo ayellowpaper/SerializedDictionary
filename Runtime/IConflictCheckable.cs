@@ -6,6 +6,7 @@ namespace AYellowpaper.SerializedCollections
 {
     public interface IConflictCheckable
     {
+        void RecalculateConflicts();
         int GetFirstConflict(object key);
     }
 }

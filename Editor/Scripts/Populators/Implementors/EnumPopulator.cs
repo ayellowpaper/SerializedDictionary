@@ -7,6 +7,8 @@ namespace AYellowpaper.SerializedCollections.Populators
     [Populator("Populate Enum", typeof(System.Enum))]
     public class EnumPopulator : Populator
     {
+        public override bool RequiresWindow => false;
+
         public override IEnumerable GetElements(System.Type type)
         {
             return System.Enum.GetValues(type);

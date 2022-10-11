@@ -169,11 +169,16 @@ namespace AYellowpaper.SerializedCollections.Editor
                 _singleEditingData.Invalidate();
             else if (!_listProperty.serializedObject.isEditingMultipleObjects && !_singleEditingData.IsValid)
             {
-                var listField = fieldInfo.FieldType.GetField(SerializedListName, BindingFlags.Instance | BindingFlags.NonPublic);
-                var dictionary = fieldInfo.GetValue(_listProperty.serializedObject.targetObject);
-                _singleEditingData.BackingList = (IList)listField.GetValue(dictionary);
-                _singleEditingData.ConflictCheckable = dictionary as IConflictCheckable;
+                _singleEditingData.BackingList = GetBackingList(_listProperty.serializedObject.targetObject);
+                _singleEditingData.ConflictCheckable = (IConflictCheckable) fieldInfo.GetValue(_listProperty.serializedObject.targetObject);
             }
+        }
+
+        private IList GetBackingList(object targetObject)
+        {
+            var listField = fieldInfo.FieldType.GetField(SerializedListName, BindingFlags.Instance | BindingFlags.NonPublic);
+            var dictionary = fieldInfo.GetValue(targetObject);
+            return (IList)listField.GetValue(dictionary);
         }
 
         private void UpdatePaging()
@@ -291,18 +296,41 @@ namespace AYellowpaper.SerializedCollections.Editor
         private void OnPopulatorDataSelected(object userdata)
         {
             var populator = (Populator)ScriptableObject.CreateInstance((Type)userdata);
-            var elements = populator.GetElements(_keyFieldInfo.FieldType);
 
+            if (populator.RequiresWindow)
+            {
+                var window = EditorWindow.GetWindow<PopulatorWindow>();
+                window.Init(populator, OnPopulatorWindowConfirmed);
+                window.ShowModal();
+            }
+            else
+                ApplyPopulator(populator);
+        }
+
+        private void OnPopulatorWindowConfirmed(PopulatorWindowEventArgs obj)
+        {
+            ApplyPopulator(obj.Populator);
+        }
+
+        private void ApplyPopulator(Populator populator)
+        {
+            var elements = populator.GetElements(_keyFieldInfo.FieldType);
             object entry = Activator.CreateInstance(_entryType);
 
-            Undo.RecordObject(_listProperty.serializedObject.targetObject, "Populate");
+            Undo.RecordObjects(_listProperty.serializedObject.targetObjects, "Populate");
 
-            //_backingList.Clear();
-            //foreach (var element in elements)
-            //{
-            //    _keyFieldInfo.SetValue(entry, element);
-            //    _backingList.Add(entry);
-            //}
+            foreach (var targetObject in _listProperty.serializedObject.targetObjects)
+            {
+                var list = GetBackingList(targetObject);
+                list.Clear();
+                foreach (var element in elements)
+                {
+                    _keyFieldInfo.SetValue(entry, element);
+                    list.Add(entry);
+                }
+                // TODO: This is only done because OnAfterDeserialize doesn't fire. Not really obvious why this has to be called manually here
+                ((IConflictCheckable)fieldInfo.GetValue(targetObject)).RecalculateConflicts();
+            }
 
             _listProperty.serializedObject.UpdateIfRequiredOrScript();
         }

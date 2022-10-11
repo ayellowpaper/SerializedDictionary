@@ -8,6 +8,8 @@ namespace AYellowpaper.SerializedCollections.Populators
     [Populator("Clear", typeof(object))]
     public class ClearPopulator : Populator
     {
+        public override bool RequiresWindow => false;
+
         public override IEnumerable GetElements(Type type)
         {
             yield break;
