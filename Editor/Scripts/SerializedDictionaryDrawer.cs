@@ -1,4 +1,5 @@
-﻿using AYellowpaper.SerializedCollections.Populators;
+﻿using AYellowpaper.SerializedCollections.Editor.Data;
+using AYellowpaper.SerializedCollections.Populators;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -24,7 +25,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         private bool _initialized = false;
         private ReorderableList _expandedList;
         private ReorderableList _unexpandedList;
-        private SingleEditingData _singleEditingData;
+        private SingleEditingData _singleEditing;
         private Type _entryType;
         private FieldInfo _keyFieldInfo;
         private GUIContent _label;
@@ -32,8 +33,8 @@ namespace AYellowpaper.SerializedCollections.Editor
         private GUIStyle _keyValueStyle;
         private SerializedDictionaryAttribute _dictionaryAttribute;
         private SerializedProperty _listProperty;
-        private ElementSettings _keySettings;
-        private ElementSettings _valueSettings;
+        private PropertyData _propertyData;
+        private bool _propertyListSettingsInitialized = false;
         private List<int> _listOfIndices;
         private PagingElement _pagingElement;
         private int _elementsPerPage = 5;
@@ -83,7 +84,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             if (_actualArraySize == 0)
                 height += 20;
             foreach (int index in _listOfIndices)
-                height += CalculateHeightOfElement(_listProperty.GetArrayElementAtIndex(index), GetElementSettings(KeyFlag).EffectiveDisplayType == DisplayType.List ? true : false, GetElementSettings(ValueFlag).EffectiveDisplayType == DisplayType.List ? true : false);
+                height += CalculateHeightOfElement(_listProperty.GetArrayElementAtIndex(index), _propertyData.GetElementData(KeyFlag).EffectiveDisplayType == DisplayType.List ? true : false, _propertyData.GetElementData(ValueFlag).EffectiveDisplayType == DisplayType.List ? true : false);
             return height;
         }
 
@@ -92,22 +93,17 @@ namespace AYellowpaper.SerializedCollections.Editor
             return property.FindPropertyRelative(fieldFlag == KeyFlag ? KeyName : ValueName);
         }
 
-        private ElementSettings GetElementSettings(bool fieldFlag)
-        {
-            return fieldFlag == KeyFlag ? _keySettings : _valueSettings;
-        }
-
         private static float CalculateHeightOfElement(SerializedProperty property, bool drawKeyAsList, bool drawValueAsList)
         {
             SerializedProperty keyProperty = property.FindPropertyRelative(KeyName);
             SerializedProperty valueProperty = property.FindPropertyRelative(ValueName);
-            return Mathf.Max(SerializedCollectionsEditorUtility.CalculateHeight(keyProperty, drawKeyAsList), SerializedCollectionsEditorUtility.CalculateHeight(valueProperty, drawValueAsList));
+            return Mathf.Max(SCEditorUtility.CalculateHeight(keyProperty, drawKeyAsList), SCEditorUtility.CalculateHeight(valueProperty, drawValueAsList));
         }
 
         private void InitializeIfNeeded(SerializedProperty property)
         {
             _listProperty = property.FindPropertyRelative(SerializedListName);
-            _actualArraySize = SerializedCollectionsEditorUtility.GetActualArraySize(_listProperty.Copy());
+            _actualArraySize = SCEditorUtility.GetActualArraySize(_listProperty.Copy());
 
             if (!_initialized)
             {
@@ -130,28 +126,30 @@ namespace AYellowpaper.SerializedCollections.Editor
                 _entryType = listField.FieldType.GetGenericArguments()[0];
                 _keyFieldInfo = _entryType.GetField(KeyName);
 
-                _singleEditingData = new SingleEditingData();
+                _singleEditing = new SingleEditingData();
 
                 _populators = PopulatorCache.GetPopulatorsForType(_keyFieldInfo.FieldType);
 
-                void CreateDisplaySettings()
-                {
-                    var genericArgs = fieldInfo.FieldType.GetGenericArguments();
-                    var firstProperty = _listProperty.GetArrayElementAtIndex(0);
-                    _keySettings = this.CreateDisplaySettings(GetElementProperty(firstProperty, true), genericArgs[0]);
-                    _keySettings.DisplayName = _dictionaryAttribute?.KeyName ?? "Key";
-                    _valueSettings = this.CreateDisplaySettings(GetElementProperty(firstProperty, false), genericArgs[1]);
-                    _valueSettings.DisplayName = _dictionaryAttribute?.ValueName ?? "Value";
-                }
+                _propertyData = SCEditorUtility.GetPropertyData(_listProperty);
+                _propertyData.GetElementData(SCEditorUtility.KeyFlag).Settings.DisplayName = _dictionaryAttribute?.KeyName ?? "Key";
+                _propertyData.GetElementData(SCEditorUtility.ValueFlag).Settings.DisplayName = _dictionaryAttribute?.ValueName ?? "Value";
+            }
 
-                if (_actualArraySize == 0)
-                {
-                    _listProperty.InsertArrayElementAtIndex(0);
-                    CreateDisplaySettings();
-                    _listProperty.DeleteArrayElementAtIndex(0);
-                }
-                else
-                    CreateDisplaySettings();
+            void InitializeSettings(bool fieldFlag)
+            {
+                var genericArgs = fieldInfo.FieldType.GetGenericArguments();
+                var firstProperty = _listProperty.GetArrayElementAtIndex(0);
+                var keySettings = CreateDisplaySettings(GetElementProperty(firstProperty, fieldFlag), genericArgs[fieldFlag == SCEditorUtility.KeyFlag ? 0 : 1]);
+                var settings = _propertyData.GetElementData(fieldFlag).Settings;
+                settings.DisplayType = keySettings.displayType;
+                settings.HasListDrawerToggle = keySettings.canToggleListDrawer;
+            }
+
+            if (!_propertyListSettingsInitialized && _listProperty.arraySize > 0)
+            {
+                _propertyListSettingsInitialized = true;
+                InitializeSettings(SCEditorUtility.KeyFlag);
+                InitializeSettings(SCEditorUtility.ValueFlag);
             }
 
             // TODO: Is there a better solution to check for Revert/delete/add?
@@ -165,12 +163,12 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void UpdateSingleEditing()
         {
-            if (_listProperty.serializedObject.isEditingMultipleObjects && _singleEditingData.IsValid)
-                _singleEditingData.Invalidate();
-            else if (!_listProperty.serializedObject.isEditingMultipleObjects && !_singleEditingData.IsValid)
+            if (_listProperty.serializedObject.isEditingMultipleObjects && _singleEditing.IsValid)
+                _singleEditing.Invalidate();
+            else if (!_listProperty.serializedObject.isEditingMultipleObjects && !_singleEditing.IsValid)
             {
-                _singleEditingData.BackingList = GetBackingList(_listProperty.serializedObject.targetObject);
-                _singleEditingData.ConflictCheckable = (IConflictCheckable) fieldInfo.GetValue(_listProperty.serializedObject.targetObject);
+                _singleEditing.BackingList = GetBackingList(_listProperty.serializedObject.targetObject);
+                _singleEditing.ConflictCheckable = (IConflictCheckable)fieldInfo.GetValue(_listProperty.serializedObject.targetObject);
             }
         }
 
@@ -214,9 +212,9 @@ namespace AYellowpaper.SerializedCollections.Editor
             return list;
         }
 
-        private ElementSettings CreateDisplaySettings(SerializedProperty property, Type type)
+        private (DisplayType displayType, bool canToggleListDrawer) CreateDisplaySettings(SerializedProperty property, Type type)
         {
-            bool hasCustomEditor = SerializedCollectionsEditorUtility.HasDrawerForType(type);
+            bool hasCustomEditor = SCEditorUtility.HasDrawerForType(type);
             bool isGenericWithChildren = property.propertyType == SerializedPropertyType.Generic && property.hasVisibleChildren;
             bool isArray = property.isArray && property.propertyType != SerializedPropertyType.String;
             bool canToggleListDrawer = isArray || (isGenericWithChildren && hasCustomEditor);
@@ -225,7 +223,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 displayType = DisplayType.Property;
             else if (!isArray && isGenericWithChildren && !hasCustomEditor)
                 displayType = DisplayType.List;
-            return new ElementSettings(property.propertyPath, displayType, canToggleListDrawer);
+            return (displayType, canToggleListDrawer);
         }
 
         private void DrawUnexpandedHeader(Rect rect)
@@ -273,10 +271,10 @@ namespace AYellowpaper.SerializedCollections.Editor
             Rect leftRect = new Rect(bottomRect.x, bottomRect.y, width, bottomRect.height);
             Rect rightRect = new Rect(bottomRect.x + width, bottomRect.y, bottomRect.width - width, bottomRect.height);
 
-            if (Event.current.type == EventType.Repaint && _keySettings != null)
+            if (Event.current.type == EventType.Repaint && _propertyData != null)
             {
-                _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(GetElementSettings(KeyFlag).DisplayName), false, false, false, false);
-                _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(GetElementSettings(ValueFlag).DisplayName), false, false, false, false);
+                _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(_propertyData.GetElementData(KeyFlag).Settings.DisplayName), false, false, false, false);
+                _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(_propertyData.GetElementData(ValueFlag).Settings.DisplayName), false, false, false, false);
             }
 
             if (_listProperty.arraySize > 0)
@@ -337,24 +335,24 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void DoDisplayTypeToggle(Rect contentRect, bool fieldFlag)
         {
-            var displaySettings = GetElementSettings(fieldFlag);
+            var displayData = _propertyData.GetElementData(fieldFlag);
 
-            if (displaySettings.HasListDrawerToggle)
+            if (displayData.Settings.HasListDrawerToggle)
             {
                 Rect rightRectToggle = new Rect(contentRect);
                 rightRectToggle.x += rightRectToggle.width - 18;
                 rightRectToggle.width = 18;
                 EditorGUI.BeginChangeCheck();
-                bool newValue = GUI.Toggle(rightRectToggle, displaySettings.IsListToggleActive, "", EditorStyles.toolbarButton);
+                bool newValue = GUI.Toggle(rightRectToggle, displayData.IsListToggleActive, "", EditorStyles.toolbarButton);
                 if (EditorGUI.EndChangeCheck())
-                    displaySettings.IsListToggleActive = newValue;
+                    displayData.IsListToggleActive = newValue;
             }
         }
 
         private float OnGetElementHeight(int index)
         {
             var element = _listProperty.GetArrayElementAtIndex(_listOfIndices[index]);
-            return CalculateHeightOfElement(element, GetElementSettings(KeyFlag).EffectiveDisplayType == DisplayType.List ? true : false, GetElementSettings(ValueFlag).EffectiveDisplayType == DisplayType.List ? true : false);
+            return CalculateHeightOfElement(element, _propertyData.GetElementData(KeyFlag).EffectiveDisplayType == DisplayType.List ? true : false, _propertyData.GetElementData(ValueFlag).EffectiveDisplayType == DisplayType.List ? true : false);
         }
 
         private void OnDrawElement(Rect rect, int index, bool isActive, bool isFocused)
@@ -375,10 +373,10 @@ namespace AYellowpaper.SerializedCollections.Editor
             var valueProperty = kvp.FindPropertyRelative(ValueName);
 
             Color prevColor = GUI.color;
-            if (_singleEditingData.IsValid)
+            if (_singleEditing.IsValid)
             {
-                var keyObject = _keyFieldInfo.GetValue(_singleEditingData.BackingList[actualIndex]);
-                int firstConflict = _singleEditingData.ConflictCheckable.GetFirstConflict(keyObject);
+                var keyObject = _keyFieldInfo.GetValue(_singleEditing.BackingList[actualIndex]);
+                int firstConflict = _singleEditing.ConflictCheckable.GetFirstConflict(keyObject);
                 if (firstConflict >= 0)
                 {
                     GUI.color = firstConflict == actualIndex ? Color.yellow : Color.red;
@@ -389,14 +387,14 @@ namespace AYellowpaper.SerializedCollections.Editor
                 }
             }
 
-            var keyDisplaySettings = GetElementSettings(KeyFlag);
-            DrawGroupedElement(keyRect, 20, keyProperty, keyDisplaySettings.EffectiveDisplayType);
+            var keyDisplayData = _propertyData.GetElementData(KeyFlag);
+            DrawGroupedElement(keyRect, 20, keyProperty, keyDisplayData.EffectiveDisplayType);
 
             EditorGUI.DrawRect(lineRect, new Color(36 / 255f, 36 / 255f, 36 / 255f));
             GUI.color = prevColor;
 
-            var valueDisplaySettings = GetElementSettings(ValueFlag);
-            DrawGroupedElement(valueRect, rightSpace, valueProperty, valueDisplaySettings.EffectiveDisplayType);
+            var valueDisplayData = _propertyData.GetElementData(ValueFlag);
+            DrawGroupedElement(valueRect, rightSpace, valueProperty, valueDisplayData.EffectiveDisplayType);
         }
 
         private void DrawGroupedElement(Rect rect, int space, SerializedProperty property, DisplayType displayType)
@@ -405,7 +403,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             using (new LabelWidth(rect.width * 0.4f))
             {
-                float height = SerializedCollectionsEditorUtility.CalculateHeight(property.Copy(), displayType == DisplayType.List ? true : false);
+                float height = SCEditorUtility.CalculateHeight(property.Copy(), displayType == DisplayType.List ? true : false);
                 Rect groupRect = new Rect(rect.x - space, rect.y, rect.width + space, height);
                 GUI.BeginGroup(groupRect);
 
@@ -435,7 +433,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 case DisplayType.List:
 
                     Rect childRect = new Rect(rect);
-                    foreach (SerializedProperty prop in SerializedCollectionsEditorUtility.GetDirectChildren(property.Copy()))
+                    foreach (SerializedProperty prop in SCEditorUtility.GetDirectChildren(property.Copy()))
                     {
                         float height = EditorGUI.GetPropertyHeight(prop, true);
                         childRect.height = height;

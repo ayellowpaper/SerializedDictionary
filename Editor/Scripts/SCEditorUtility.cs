@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
 using System.Linq;
+using AYellowpaper.SerializedCollections.Editor.Data;
 
 namespace AYellowpaper.SerializedCollections.Editor
 {
-    internal static class SerializedCollectionsEditorUtility
+    internal static class SCEditorUtility
     {
         public const string EditorPrefsPrefix = "SC_";
+        public const bool KeyFlag = true;
+        public const bool ValueFlag = false;
 
         public static bool GetPersistentBool(string path, bool defaultValue)
         {
@@ -57,6 +60,15 @@ namespace AYellowpaper.SerializedCollections.Editor
         public static int GetActualArraySize(SerializedProperty arrayProperty)
         {
             return GetDirectChildren(arrayProperty).Count() - 1;
+        }
+
+        public static PropertyData GetPropertyData(SerializedProperty property)
+        {
+            var data = new PropertyData();
+            var json = EditorPrefs.GetString(EditorPrefsPrefix + property.propertyPath, null);
+            if (json != null)
+                EditorJsonUtility.FromJsonOverwrite(json, data);
+            return data;
         }
 
         public static bool HasDrawerForType(Type type)
