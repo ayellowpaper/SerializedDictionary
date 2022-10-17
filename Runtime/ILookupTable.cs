@@ -4,9 +4,9 @@ using UnityEngine;
 
 namespace AYellowpaper.SerializedCollections
 {
-    public interface IConflictCheckable
+    public interface ILookupTable
     {
-        void RecalculateConflicts();
-        int GetFirstConflict(object key);
+        void RecalculateOccurences();
+        IReadOnlyList<int> GetOccurences(object key);
     }
 }

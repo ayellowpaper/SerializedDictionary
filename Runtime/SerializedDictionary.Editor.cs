@@ -7,11 +7,11 @@ namespace AYellowpaper.SerializedCollections
 #if UNITY_EDITOR
     public partial class SerializedDictionary<TKey, TValue>
     {
-        private Dictionary<TKey, List<int>> _conflicts = new Dictionary<TKey, List<int>>();
+        private Dictionary<TKey, List<int>> _occurences = new Dictionary<TKey, List<int>>();
 
         public void OnAfterDeserialize()
         {
-            RecalculateConflicts();
+            RecalculateOccurences();
         }
 
         public void OnBeforeSerialize()

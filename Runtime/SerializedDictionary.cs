@@ -4,8 +4,10 @@ using UnityEngine;
 namespace AYellowpaper.SerializedCollections
 {
     [System.Serializable]
-    public partial class SerializedDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver, IConflictCheckable
+    public partial class SerializedDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver, ILookupTable
     {
+        private static readonly List<int> EmptyList = new List<int>();
+
         [SerializeField]
         internal List<SerializedKeyValuePair<TKey, TValue>> _serializedList = new List<SerializedKeyValuePair<TKey, TValue>>();
 
@@ -25,20 +27,20 @@ namespace AYellowpaper.SerializedCollections
         }
 #endif
 
-        public int GetFirstConflict(object key)
+        public IReadOnlyList<int> GetOccurences(object key)
         {
 #if UNITY_EDITOR
-            if (key is TKey castKey && _conflicts.TryGetValue(castKey, out var list))
-                return list[0];
+            if (key is TKey castKey && _occurences.TryGetValue(castKey, out var list))
+                return list;
 #endif
-            return -1;
+            return EmptyList;
         }
 
-        public void RecalculateConflicts()
+        public void RecalculateOccurences()
         {
 #if UNITY_EDITOR
             Clear();
-            _conflicts.Clear();
+            _occurences.Clear();
 
             int count = _serializedList.Count;
             for (int i = 0; i < count; i++)
@@ -47,15 +49,13 @@ namespace AYellowpaper.SerializedCollections
                 if (!SerializedCollectionsUtility.IsValidKey(kvp.Key))
                     continue;
 
-                if (ContainsKey(kvp.Key))
+                if (!_occurences.ContainsKey(kvp.Key))
                 {
-                    if (!_conflicts.ContainsKey(kvp.Key))
-                        _conflicts.Add(kvp.Key, new List<int>() { _serializedList.FindIndex(x => x.Key.Equals(kvp.Key)) });
-                    _conflicts[kvp.Key].Add(i);
-                    continue;
+                    _occurences.Add(kvp.Key, new List<int>() { i });
+                    Add(kvp.Key, kvp.Value);
                 }
-
-                Add(kvp.Key, kvp.Value);
+                else
+                    _occurences[kvp.Key].Add(i);
             }
 #endif
         }

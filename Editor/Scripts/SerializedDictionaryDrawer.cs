@@ -41,12 +41,13 @@ namespace AYellowpaper.SerializedCollections.Editor
         private int _lastArraySize = -1;
         private int _actualArraySize = -1;
         private IReadOnlyList<PopulatorData> _populators;
+        private Populator _queuedPopulator;
 
         private class SingleEditingData
         {
             public bool IsValid => BackingList != null;
             public IList BackingList;
-            public IConflictCheckable ConflictCheckable;
+            public ILookupTable ConflictCheckable;
 
             public void Invalidate()
             {
@@ -70,6 +71,12 @@ namespace AYellowpaper.SerializedCollections.Editor
                 {
                     _unexpandedList.DoList(position.WithY(0));
                 }
+            }
+
+            if (_queuedPopulator != null)
+            {
+                ApplyPopulator(_queuedPopulator);
+                _queuedPopulator = null;
             }
         }
 
@@ -102,6 +109,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void InitializeIfNeeded(SerializedProperty property)
         {
+            property.serializedObject.Update();
             _listProperty = property.FindPropertyRelative(SerializedListName);
             _actualArraySize = SCEditorUtility.GetActualArraySize(_listProperty.Copy());
 
@@ -168,7 +176,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             else if (!_listProperty.serializedObject.isEditingMultipleObjects && !_singleEditing.IsValid)
             {
                 _singleEditing.BackingList = GetBackingList(_listProperty.serializedObject.targetObject);
-                _singleEditing.ConflictCheckable = (IConflictCheckable)fieldInfo.GetValue(_listProperty.serializedObject.targetObject);
+                _singleEditing.ConflictCheckable = (ILookupTable)fieldInfo.GetValue(_listProperty.serializedObject.targetObject);
             }
         }
 
@@ -298,16 +306,11 @@ namespace AYellowpaper.SerializedCollections.Editor
             if (populator.RequiresWindow)
             {
                 var window = EditorWindow.GetWindow<PopulatorWindow>();
-                window.Init(populator, OnPopulatorWindowConfirmed);
+                window.Init(populator, x => _queuedPopulator = x.Populator);
                 window.ShowModal();
             }
             else
-                ApplyPopulator(populator);
-        }
-
-        private void OnPopulatorWindowConfirmed(PopulatorWindowEventArgs obj)
-        {
-            ApplyPopulator(obj.Populator);
+                _queuedPopulator = populator;
         }
 
         private void ApplyPopulator(Populator populator)
@@ -319,15 +322,19 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             foreach (var targetObject in _listProperty.serializedObject.targetObjects)
             {
+                var conflictChecker = (ILookupTable)fieldInfo.GetValue(targetObject);
                 var list = GetBackingList(targetObject);
-                list.Clear();
-                foreach (var element in elements)
+                foreach (var key in elements)
                 {
-                    _keyFieldInfo.SetValue(entry, element);
+                    var occurences = conflictChecker.GetOccurences(key);
+                    if (occurences.Count > 0)
+                        continue;
+                    _keyFieldInfo.SetValue(entry, key);
                     list.Add(entry);
                 }
                 // TODO: This is only done because OnAfterDeserialize doesn't fire. Not really obvious why this has to be called manually here
-                ((IConflictCheckable)fieldInfo.GetValue(targetObject)).RecalculateConflicts();
+                conflictChecker.RecalculateOccurences();
+                PrefabUtility.RecordPrefabInstancePropertyModifications(targetObject);
             }
 
             _listProperty.serializedObject.UpdateIfRequiredOrScript();
@@ -376,10 +383,10 @@ namespace AYellowpaper.SerializedCollections.Editor
             if (_singleEditing.IsValid)
             {
                 var keyObject = _keyFieldInfo.GetValue(_singleEditing.BackingList[actualIndex]);
-                int firstConflict = _singleEditing.ConflictCheckable.GetFirstConflict(keyObject);
-                if (firstConflict >= 0)
+                var occurences = _singleEditing.ConflictCheckable.GetOccurences(keyObject);
+                if (occurences.Count > 1)
                 {
-                    GUI.color = firstConflict == actualIndex ? Color.yellow : Color.red;
+                    GUI.color = occurences[0] == actualIndex ? Color.yellow : Color.red;
                 }
                 if (!SerializedCollectionsUtility.IsValidKey(keyObject))
                 {
