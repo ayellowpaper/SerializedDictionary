@@ -1,6 +1,7 @@
 ﻿using AYellowpaper.SerializedCollections.Editor.Data;
 using AYellowpaper.SerializedCollections.Populators;
 using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
@@ -16,6 +17,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         public const string KeyName = nameof(SerializedKeyValuePair<int, int>.Key);
         public const string ValueName = nameof(SerializedKeyValuePair<int, int>.Value);
         public const string SerializedListName = nameof(SerializedDictionary<int, int>._serializedList);
+        public const string LookupTableName = nameof(SerializedDictionary<int, int>.LookupTable);
 
         private const int NotExpandedHeight = 20;
         private const bool KeyFlag = true;
@@ -39,20 +41,19 @@ namespace AYellowpaper.SerializedCollections.Editor
         private PagingElement _pagingElement;
         private int _elementsPerPage = 5;
         private int _lastArraySize = -1;
-        private int _actualArraySize = -1;
         private IReadOnlyList<PopulatorData> _populators;
-        private Populator _queuedPopulator;
+        private Action _queuedAction;
 
         private class SingleEditingData
         {
             public bool IsValid => BackingList != null;
             public IList BackingList;
-            public ILookupTable ConflictCheckable;
+            public ILookupTable LookupTable;
 
             public void Invalidate()
             {
                 BackingList = null;
-                ConflictCheckable = null;
+                LookupTable = null;
             }
         }
 
@@ -73,10 +74,10 @@ namespace AYellowpaper.SerializedCollections.Editor
                 }
             }
 
-            if (_queuedPopulator != null)
+            if (_queuedAction != null)
             {
-                ApplyPopulator(_queuedPopulator);
-                _queuedPopulator = null;
+                _queuedAction();
+                _queuedAction = null;
             }
         }
 
@@ -88,7 +89,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 return NotExpandedHeight;
 
             float height = 68;
-            if (_actualArraySize == 0)
+            if (_listProperty.minArraySize == 0)
                 height += 20;
             foreach (int index in _listOfIndices)
                 height += CalculateHeightOfElement(_listProperty.GetArrayElementAtIndex(index), _propertyData.GetElementData(KeyFlag).EffectiveDisplayType == DisplayType.List ? true : false, _propertyData.GetElementData(ValueFlag).EffectiveDisplayType == DisplayType.List ? true : false);
@@ -111,7 +112,6 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             property.serializedObject.Update();
             _listProperty = property.FindPropertyRelative(SerializedListName);
-            _actualArraySize = SCEditorUtility.GetActualArraySize(_listProperty.Copy());
 
             if (!_initialized)
             {
@@ -153,7 +153,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 settings.HasListDrawerToggle = keySettings.canToggleListDrawer;
             }
 
-            if (!_propertyListSettingsInitialized && _listProperty.arraySize > 0)
+            if (!_propertyListSettingsInitialized && _listProperty.minArraySize > 0)
             {
                 _propertyListSettingsInitialized = true;
                 InitializeSettings(SCEditorUtility.KeyFlag);
@@ -161,9 +161,9 @@ namespace AYellowpaper.SerializedCollections.Editor
             }
 
             // TODO: Is there a better solution to check for Revert/delete/add?
-            if (_lastArraySize != _actualArraySize)
+            if (_lastArraySize != _listProperty.minArraySize)
             {
-                _lastArraySize = _actualArraySize;
+                _lastArraySize = _listProperty.minArraySize;
                 UpdateSingleEditing();
                 UpdatePaging();
             }
@@ -176,8 +176,15 @@ namespace AYellowpaper.SerializedCollections.Editor
             else if (!_listProperty.serializedObject.isEditingMultipleObjects && !_singleEditing.IsValid)
             {
                 _singleEditing.BackingList = GetBackingList(_listProperty.serializedObject.targetObject);
-                _singleEditing.ConflictCheckable = (ILookupTable)fieldInfo.GetValue(_listProperty.serializedObject.targetObject);
+                _singleEditing.LookupTable = GetLookupTableFromObject(_listProperty.serializedObject.targetObject);
             }
+        }
+
+        private ILookupTable GetLookupTableFromObject(UnityEngine.Object targetObject)
+        {
+            var dictionary = fieldInfo.GetValue(targetObject);
+            var propInfo = dictionary.GetType().GetProperty(LookupTableName, BindingFlags.Instance | BindingFlags.NonPublic);
+            return (ILookupTable)propInfo.GetValue(dictionary);
         }
 
         private IList GetBackingList(object targetObject)
@@ -189,13 +196,13 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void UpdatePaging()
         {
-            _pagingElement.PageCount = Mathf.Max(1, Mathf.CeilToInt((float)_actualArraySize / _elementsPerPage));
+            _pagingElement.PageCount = Mathf.Max(1, Mathf.CeilToInt((float)_listProperty.minArraySize / _elementsPerPage));
 
             _listOfIndices.Clear();
             _listOfIndices.Capacity = Mathf.Max(_elementsPerPage, _listOfIndices.Capacity);
 
             int startIndex = (_pagingElement.Page - 1) * _elementsPerPage;
-            int endIndex = Mathf.Min(startIndex + _elementsPerPage, _actualArraySize);
+            int endIndex = Mathf.Min(startIndex + _elementsPerPage, _listProperty.minArraySize);
             for (int i = startIndex; i < endIndex; i++)
                 _listOfIndices.Add(i);
         }
@@ -262,6 +269,8 @@ namespace AYellowpaper.SerializedCollections.Editor
                 if (EditorGUI.DropdownButton(lastTopRect, EditorGUIUtility.IconContent("d_Grid.FillTool"), FocusType.Passive))
                 {
                     var gm = new GenericMenu();
+                    gm.AddItem(new GUIContent("Clear"), false, () => QueueAction(() => _listProperty.ClearArray()));
+                    gm.AddItem(new GUIContent("Remove Conflicts"), false, () => QueueAction(RemoveConflicts));
                     foreach (var populatorData in _populators)
                     {
                         gm.AddItem(new GUIContent(populatorData.Name), false, OnPopulatorDataSelected, populatorData.PopulatorType);
@@ -285,7 +294,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(_propertyData.GetElementData(ValueFlag).Settings.DisplayName), false, false, false, false);
             }
 
-            if (_listProperty.arraySize > 0)
+            if (_listProperty.minArraySize > 0)
             {
                 DoDisplayTypeToggle(leftRect, KeyFlag);
                 DoDisplayTypeToggle(rightRect, ValueFlag);
@@ -306,11 +315,16 @@ namespace AYellowpaper.SerializedCollections.Editor
             if (populator.RequiresWindow)
             {
                 var window = EditorWindow.GetWindow<PopulatorWindow>();
-                window.Init(populator, x => _queuedPopulator = x.Populator);
+                window.Init(populator, x => QueueAction(() => ApplyPopulator(x.Populator)));
                 window.ShowModal();
             }
             else
-                _queuedPopulator = populator;
+                QueueAction(() => ApplyPopulator(populator));
+        }
+
+        private void QueueAction(Action action)
+        {
+            _queuedAction = action;
         }
 
         private void ApplyPopulator(Populator populator)
@@ -318,26 +332,48 @@ namespace AYellowpaper.SerializedCollections.Editor
             var elements = populator.GetElements(_keyFieldInfo.FieldType);
             object entry = Activator.CreateInstance(_entryType);
 
-            Undo.RecordObjects(_listProperty.serializedObject.targetObjects, "Populate");
-
             foreach (var targetObject in _listProperty.serializedObject.targetObjects)
             {
-                var conflictChecker = (ILookupTable)fieldInfo.GetValue(targetObject);
+                Undo.RecordObject(targetObject, "Populate");
+                var lookupTable = GetLookupTableFromObject(targetObject);
                 var list = GetBackingList(targetObject);
                 foreach (var key in elements)
                 {
-                    var occurences = conflictChecker.GetOccurences(key);
+                    var occurences = lookupTable.GetOccurences(key);
                     if (occurences.Count > 0)
                         continue;
                     _keyFieldInfo.SetValue(entry, key);
                     list.Add(entry);
                 }
                 // TODO: This is only done because OnAfterDeserialize doesn't fire. Not really obvious why this has to be called manually here
-                conflictChecker.RecalculateOccurences();
+                lookupTable.RecalculateOccurences();
                 PrefabUtility.RecordPrefabInstancePropertyModifications(targetObject);
             }
 
-            _listProperty.serializedObject.UpdateIfRequiredOrScript();
+            _listProperty.serializedObject.Update();
+        }
+
+        private void RemoveConflicts()
+        {
+            foreach (var targetObject in _listProperty.serializedObject.targetObjects)
+            {
+                var lookupTable = GetLookupTableFromObject(targetObject);
+
+                List<int> duplicateIndices = new List<int>();
+
+                foreach (var key in lookupTable.Keys)
+                {
+                    var occurences = lookupTable.GetOccurences(key);
+                    for (int i = 1; i < occurences.Count; i++)
+                        duplicateIndices.Add(occurences[i]);
+ 
+                }
+
+                foreach (var indexToRemove in duplicateIndices.OrderByDescending(x => x))
+                {
+                    _listProperty.DeleteArrayElementAtIndex(indexToRemove);
+                }
+            }
         }
 
         private void DoDisplayTypeToggle(Rect contentRect, bool fieldFlag)
@@ -383,7 +419,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             if (_singleEditing.IsValid)
             {
                 var keyObject = _keyFieldInfo.GetValue(_singleEditing.BackingList[actualIndex]);
-                var occurences = _singleEditing.ConflictCheckable.GetOccurences(keyObject);
+                var occurences = _singleEditing.LookupTable.GetOccurences(keyObject);
                 if (occurences.Count > 1)
                 {
                     GUI.color = occurences[0] == actualIndex ? Color.yellow : Color.red;
@@ -455,7 +491,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void OnAdd(ReorderableList list)
         {
-            int targetIndex = list.index >= 0 ? list.index : _actualArraySize;
+            int targetIndex = list.index >= 0 ? list.index : _listProperty.minArraySize;
             _listProperty.InsertArrayElementAtIndex(targetIndex);
         }
 
@@ -470,7 +506,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             int actualIndex = _listOfIndices[list.index];
             _listProperty.DeleteArrayElementAtIndex(actualIndex);
             UpdatePaging();
-            if (actualIndex >= _actualArraySize)
+            if (actualIndex >= _listProperty.minArraySize)
                 list.index = _listOfIndices.Count - 1;
         }
     }
