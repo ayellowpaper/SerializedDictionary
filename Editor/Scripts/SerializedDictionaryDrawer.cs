@@ -357,7 +357,9 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             foreach (var targetObject in _listProperty.serializedObject.targetObjects)
             {
+                Undo.RecordObject(targetObject, "Populate");
                 var lookupTable = GetLookupTableFromObject(targetObject);
+                var list = GetBackingList(targetObject);
 
                 List<int> duplicateIndices = new List<int>();
 
@@ -371,8 +373,12 @@ namespace AYellowpaper.SerializedCollections.Editor
 
                 foreach (var indexToRemove in duplicateIndices.OrderByDescending(x => x))
                 {
-                    _listProperty.DeleteArrayElementAtIndex(indexToRemove);
+                    list.RemoveAt(indexToRemove);
                 }
+
+                // TODO: This is only done because OnAfterDeserialize doesn't fire. Not really obvious why this has to be called manually here
+                lookupTable.RecalculateOccurences();
+                PrefabUtility.RecordPrefabInstancePropertyModifications(targetObject);
             }
         }
 
