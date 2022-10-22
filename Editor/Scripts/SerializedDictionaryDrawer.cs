@@ -290,7 +290,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             if (!_singleEditing.IsValid)
             {
                 lastTopRect = lastTopRect.Prepend(lastTopRect.height + 5);
-                var guicontent = EditorGUIUtility.TrIconContent(EditorGUIUtility.Load("d_console.warnicon") as Texture, "Conflict checking, duplicate key removal and populators not supported in multi object editing mode.");
+                var guicontent = EditorGUIUtility.TrIconContent(EditorGUIUtility.Load("d_console.infoicon") as Texture, "Conflict checking, duplicate key removal and populators not supported in multi object editing mode.");
                 GUI.Label(lastTopRect, guicontent);
             }
 
