@@ -4,6 +4,7 @@ using System.Reflection;
 using UnityEditor;
 using System.Linq;
 using AYellowpaper.SerializedCollections.Editor.Data;
+using UnityEngine;
 
 namespace AYellowpaper.SerializedCollections.Editor
 {
@@ -80,6 +81,22 @@ namespace AYellowpaper.SerializedCollections.Editor
             if (getDrawerMethod == null)
                 return false;
             return getDrawerMethod.Invoke(null, new object[] { type }) != null;
+        }
+
+        internal static void AddGenericMenuItem(GenericMenu genericMenu, bool isEnabled, GUIContent content, GenericMenu.MenuFunction action)
+        {
+            if (isEnabled)
+                genericMenu.AddItem(content, false, action);
+            else
+                genericMenu.AddDisabledItem(content);
+        }
+
+        internal static void AddGenericMenuItem(GenericMenu genericMenu, bool isEnabled, GUIContent content, GenericMenu.MenuFunction2 action, object userData)
+        {
+            if (isEnabled)
+                genericMenu.AddItem(content, false, action, userData);
+            else
+                genericMenu.AddDisabledItem(content);
         }
     }
 }

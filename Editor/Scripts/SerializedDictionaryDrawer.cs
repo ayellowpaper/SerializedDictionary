@@ -1,9 +1,9 @@
 ﻿using AYellowpaper.SerializedCollections.Editor.Data;
 using AYellowpaper.SerializedCollections.Populators;
 using System;
-using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEditorInternal;
@@ -248,39 +248,54 @@ namespace AYellowpaper.SerializedCollections.Editor
             EditorGUI.EndProperty();
         }
 
+        private void DoOptionsButton(Rect rect)
+        {
+            if (EditorGUI.DropdownButton(rect, EditorGUIUtility.IconContent("d_Grid.FillTool"), FocusType.Passive))
+            {
+                var gm = new GenericMenu();
+                SCEditorUtility.AddGenericMenuItem(gm, true, new GUIContent("Clear"), () => QueueAction(() => _listProperty.ClearArray()));
+                gm.AddSeparator(string.Empty);
+                SCEditorUtility.AddGenericMenuItem(gm, _singleEditing.IsValid, new GUIContent("Remove Conflicts"), () => QueueAction(RemoveConflicts));
+                foreach (var populatorData in _populators)
+                {
+                    SCEditorUtility.AddGenericMenuItem(gm, _singleEditing.IsValid, new GUIContent(populatorData.Name), OnPopulatorDataSelected, populatorData.PopulatorType);
+                }
+                gm.DropDown(rect);
+            }
+        }
+
+        private void DoPaging(Rect rect)
+        {
+            EditorGUI.BeginChangeCheck();
+            _pagingElement.OnGUI(rect);
+            if (EditorGUI.EndChangeCheck())
+                UpdatePaging();
+        }
+
         private void OnDrawHeader(Rect rect)
         {
             Rect topRect = rect.WithHeight(rect.height / 2);
-
             Rect lastTopRect = topRect.Append(0);
-            float pagingWidth = _pagingElement.GetDesiredWidth();
+
             if (_pagingElement.PageCount > 1)
             {
-                EditorGUI.BeginChangeCheck();
-                lastTopRect = lastTopRect.Prepend(pagingWidth);
-                _pagingElement.OnGUI(lastTopRect);
-                if (EditorGUI.EndChangeCheck())
-                    UpdatePaging();
+                lastTopRect = lastTopRect.Prepend(_pagingElement.GetDesiredWidth());
+                DoPaging(lastTopRect);
+                lastTopRect = lastTopRect.Prepend(5);
             }
 
-            if (_populators.Count > 0)
+            lastTopRect = lastTopRect.Prepend(30);
+            DoOptionsButton(lastTopRect);
+
+            if (!_singleEditing.IsValid)
             {
-                lastTopRect = lastTopRect.Prepend(30);
-                if (EditorGUI.DropdownButton(lastTopRect, EditorGUIUtility.IconContent("d_Grid.FillTool"), FocusType.Passive))
-                {
-                    var gm = new GenericMenu();
-                    gm.AddItem(new GUIContent("Clear"), false, () => QueueAction(() => _listProperty.ClearArray()));
-                    gm.AddItem(new GUIContent("Remove Conflicts"), false, () => QueueAction(RemoveConflicts));
-                    foreach (var populatorData in _populators)
-                    {
-                        gm.AddItem(new GUIContent(populatorData.Name), false, OnPopulatorDataSelected, populatorData.PopulatorType);
-                    }
-                    gm.DropDown(lastTopRect);
-                }
+                lastTopRect = lastTopRect.Prepend(lastTopRect.height + 5);
+                var guicontent = EditorGUIUtility.TrIconContent(EditorGUIUtility.Load("d_console.warnicon") as Texture, "Conflict checking, duplicate key removal and populators not supported in multi object editing mode.");
+                GUI.Label(lastTopRect, guicontent);
             }
 
             EditorGUI.BeginProperty(topRect, _label, _listProperty);
-            _listProperty.isExpanded = EditorGUI.Foldout(topRect.WithXAndWidth(topRect.x - 5, topRect.width - pagingWidth), _listProperty.isExpanded, _label, true);
+            _listProperty.isExpanded = EditorGUI.Foldout(topRect.WithXAndWidth(topRect.x - 5, lastTopRect.x - topRect.x), _listProperty.isExpanded, _label, true);
 
             Rect bottomRect = new Rect(_totalRect.x + 1, topRect.y + topRect.height, _totalRect.width - 1, rect.height - topRect.height);
 
@@ -368,7 +383,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                     var occurences = lookupTable.GetOccurences(key);
                     for (int i = 1; i < occurences.Count; i++)
                         duplicateIndices.Add(occurences[i]);
- 
+
                 }
 
                 foreach (var indexToRemove in duplicateIndices.OrderByDescending(x => x))
