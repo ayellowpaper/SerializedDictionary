@@ -47,9 +47,9 @@ namespace AYellowpaper.SerializedCollections.Editor
         public void OnGUI(Rect rect)
         {
             Rect leftButton = rect.WithXAndWidth(rect.x, buttonWidth);
-            Rect inputRect = leftButton.Append(inputWidth);
-            Rect labelRect = inputRect.Append(labelWidth);
-            Rect rightButton = labelRect.Append(buttonWidth);
+            Rect inputRect = leftButton.AppendRight(inputWidth);
+            Rect labelRect = inputRect.AppendRight(labelWidth);
+            Rect rightButton = labelRect.AppendRight(buttonWidth);
             using (new GUIEnabledScope(Page != 1))
                 if (GUI.Button(leftButton, "<"))
                     Page--;
