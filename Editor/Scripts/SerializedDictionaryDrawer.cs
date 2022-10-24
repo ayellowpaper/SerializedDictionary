@@ -8,6 +8,8 @@ using System.Reflection;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
+using UnityEditor.IMGUI.Controls;
+using System.Globalization;
 
 namespace AYellowpaper.SerializedCollections.Editor
 {
@@ -19,7 +21,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         public const string SerializedListName = nameof(SerializedDictionary<int, int>._serializedList);
         public const string LookupTableName = nameof(SerializedDictionary<int, int>.LookupTable);
 
-        private const int NotExpandedHeight = 20;
+        private const int SingleHeaderHeight = 20;
         private const bool KeyFlag = true;
         private const bool ValueFlag = false;
         private static readonly List<int> NoEntriesList = new List<int>();
@@ -43,6 +45,8 @@ namespace AYellowpaper.SerializedCollections.Editor
         private int _lastArraySize = -1;
         private IReadOnlyList<PopulatorData> _populators;
         private Action _queuedAction;
+        private SearchField _searchField;
+        private string _searchText;
 
         private class SingleEditingData
         {
@@ -68,7 +72,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 _expandedList.DoList(position);
             else
             {
-                using (new GUI.ClipScope(new Rect(0, position.y, position.width + position.x, NotExpandedHeight)))
+                using (new GUI.ClipScope(new Rect(0, position.y, position.width + position.x, SingleHeaderHeight)))
                 {
                     _unexpandedList.DoList(position.WithY(0));
                 }
@@ -86,9 +90,9 @@ namespace AYellowpaper.SerializedCollections.Editor
             InitializeIfNeeded(property);
 
             if (!_listProperty.isExpanded)
-                return NotExpandedHeight;
+                return SingleHeaderHeight;
 
-            float height = 68;
+            float height = 94;
             if (_listProperty.minArraySize == 0)
                 height += 20;
             foreach (int index in _pagedIndices)
@@ -141,6 +145,8 @@ namespace AYellowpaper.SerializedCollections.Editor
                 _propertyData = SCEditorUtility.GetPropertyData(_listProperty);
                 _propertyData.GetElementData(SCEditorUtility.KeyFlag).Settings.DisplayName = _dictionaryAttribute?.KeyName ?? "Key";
                 _propertyData.GetElementData(SCEditorUtility.ValueFlag).Settings.DisplayName = _dictionaryAttribute?.ValueName ?? "Value";
+
+                _searchField = new SearchField();
             }
 
             void InitializeSettings(bool fieldFlag)
@@ -216,7 +222,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             list.drawElementCallback += OnDrawElement;
             list.elementHeightCallback += OnGetElementHeight;
             list.drawHeaderCallback += OnDrawHeader;
-            list.headerHeight *= 2;
+            list.headerHeight = SingleHeaderHeight * 3;
             return list;
         }
 
@@ -277,7 +283,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void OnDrawHeader(Rect rect)
         {
-            Rect topRect = rect.WithHeight(rect.height / 2);
+            Rect topRect = rect.WithHeight(SingleHeaderHeight - 1);
             Rect lastTopRect = topRect.AppendRight(0);
 
             if (_pagingElement.PageCount > 1)
@@ -301,11 +307,12 @@ namespace AYellowpaper.SerializedCollections.Editor
             _listProperty.isExpanded = EditorGUI.Foldout(topRect.WithXAndWidth(topRect.x - 5, lastTopRect.x - topRect.x), _listProperty.isExpanded, _label, true);
             EditorGUI.EndProperty();
 
-            Rect bottomRect = topRect.AppendDown(rect.height - topRect.height).WithXAndWidth(_totalRect.x + 1, _totalRect.width - 1);
+            Rect searchRect = topRect.AppendDown(SingleHeaderHeight).WithXAndWidth(_totalRect.x + 1, _totalRect.width - 1);
+            Rect keyValueRect = searchRect.AppendDown(SingleHeaderHeight);
 
             float width = EditorGUIUtility.labelWidth + 22;
-            Rect leftRect = bottomRect.WithWidth(width);
-            Rect rightRect = leftRect.AppendRight(bottomRect.width - width);
+            Rect leftRect = keyValueRect.WithWidth(width);
+            Rect rightRect = leftRect.AppendRight(keyValueRect.width - width);
 
             if (Event.current.type == EventType.Repaint && _propertyData != null)
             {
@@ -319,7 +326,60 @@ namespace AYellowpaper.SerializedCollections.Editor
                 DoDisplayTypeToggle(rightRect, ValueFlag);
             }
 
-            EditorGUI.DrawRect(bottomRect.AppendDown(1), new Color(36 / 255f, 36 / 255f, 36 / 255f));
+            Color borderColor = new Color(36 / 255f, 36 / 255f, 36 / 255f);
+            EditorGUI.DrawRect(keyValueRect.AppendDown(1, -1), borderColor);
+
+            EditorGUI.DrawRect(searchRect.AppendLeft(1), borderColor);
+            EditorGUI.DrawRect(searchRect.AppendRight(1, -1), borderColor);
+            EditorGUI.DrawRect(searchRect.AppendDown(1, -1), borderColor);
+            EditorGUI.BeginChangeCheck();
+            _searchText = _searchField.OnToolbarGUI(searchRect.Cut(1, 6), _searchText);
+            if (EditorGUI.EndChangeCheck())
+            {
+                ApplySearch(_searchText);
+            }
+        }
+
+        static IEnumerable<string> GetFlags(Type type, int val)
+        {
+            if (val == 0)
+                yield return Enum.GetName(type, 0);
+            else
+            {
+                foreach (int value in Enum.GetValues(type))
+                    if ((value & val) == value && value > 0)
+                        yield return Enum.GetName(type, value);
+
+                if (val == int.MaxValue)
+                    yield return "Everything";
+            }
+        }
+
+        private void ApplySearch(string searchString)
+        {
+            string numberSearchString = searchString.Replace(',', '.');
+
+            foreach (var child in SCEditorUtility.GetChildren(_listProperty.Copy(), true))
+            {
+                if (child.propertyType == SerializedPropertyType.Enum)
+                {
+                    if (SCEditorUtility.TryGetTypeFromProperty(child, out var type))
+                    {
+                        foreach (var text in SCEnumUtility.GetEnumCache(type).GetNamesForValue(child.enumValueFlag))
+                            Debug.Log(text);
+                    }
+                }
+
+                if (child.propertyType == SerializedPropertyType.String && child.stringValue.Contains(searchString))
+                    Debug.Log(child.propertyPath + " " + child.stringValue);
+
+                if (child.propertyType == SerializedPropertyType.Float)
+                {
+                    if (child.floatValue.ToString(CultureInfo.InvariantCulture).Contains(numberSearchString))
+                        Debug.Log(child.propertyPath + " " + child.floatValue);
+                }
+
+            }
         }
 
         private void OnPopulatorDataSelected(object userdata)
@@ -382,7 +442,6 @@ namespace AYellowpaper.SerializedCollections.Editor
                     var occurences = lookupTable.GetOccurences(key);
                     for (int i = 1; i < occurences.Count; i++)
                         duplicateIndices.Add(occurences[i]);
-
                 }
 
                 foreach (var indexToRemove in duplicateIndices.OrderByDescending(x => x))
@@ -496,7 +555,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 case DisplayType.List:
 
                     Rect childRect = new Rect(rect);
-                    foreach (SerializedProperty prop in SCEditorUtility.GetDirectChildren(property.Copy()))
+                    foreach (SerializedProperty prop in SCEditorUtility.GetChildren(property.Copy()))
                     {
                         float height = EditorGUI.GetPropertyHeight(prop, true);
                         childRect.height = height;

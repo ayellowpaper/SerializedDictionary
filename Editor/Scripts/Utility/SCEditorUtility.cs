@@ -34,7 +34,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             if (drawAsList)
             {
                 float height = 0;
-                foreach (SerializedProperty child in GetDirectChildren(property))
+                foreach (SerializedProperty child in GetChildren(property))
                     height += EditorGUI.GetPropertyHeight(child, true);
                 return height;
             }
@@ -42,7 +42,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             return EditorGUI.GetPropertyHeight(property, true);
         }
 
-        public static IEnumerable<SerializedProperty> GetDirectChildren(SerializedProperty property)
+        public static IEnumerable<SerializedProperty> GetChildren(SerializedProperty property, bool recursive = false)
         {
             if (!property.hasVisibleChildren)
             {
@@ -55,12 +55,12 @@ namespace AYellowpaper.SerializedCollections.Editor
             do
             {
                 yield return property;
-            } while (property.NextVisible(false) && !SerializedProperty.EqualContents(property, end));
+            } while (property.NextVisible(recursive) && !SerializedProperty.EqualContents(property, end));
         }
 
         public static int GetActualArraySize(SerializedProperty arrayProperty)
         {
-            return GetDirectChildren(arrayProperty).Count() - 1;
+            return GetChildren(arrayProperty).Count() - 1;
         }
 
         public static PropertyData GetPropertyData(SerializedProperty property)
@@ -97,6 +97,24 @@ namespace AYellowpaper.SerializedCollections.Editor
                 genericMenu.AddItem(content, false, action, userData);
             else
                 genericMenu.AddDisabledItem(content);
+        }
+
+        internal static bool TryGetTypeFromProperty(SerializedProperty property, out Type type)
+        {
+            try
+            {
+                var classType = typeof(EditorGUI).Assembly.GetType("UnityEditor.ScriptAttributeUtility");
+                var methodInfo = classType.GetMethod("GetFieldInfoFromProperty", BindingFlags.Static | BindingFlags.NonPublic);
+                var parameters = new object[] { property, null };
+                methodInfo.Invoke(null, parameters);
+                type = (Type) parameters[1];
+                return true;
+            }
+            catch
+            {
+                type = null;
+                return false;
+            }
         }
     }
 }
