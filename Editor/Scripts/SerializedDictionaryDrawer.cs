@@ -10,6 +10,7 @@ using UnityEditorInternal;
 using UnityEngine;
 using UnityEditor.IMGUI.Controls;
 using System.Globalization;
+using AYellowpaper.SerializedCollections.Editor.Search;
 
 namespace AYellowpaper.SerializedCollections.Editor
 {
@@ -340,46 +341,30 @@ namespace AYellowpaper.SerializedCollections.Editor
             }
         }
 
-        static IEnumerable<string> GetFlags(Type type, int val)
-        {
-            if (val == 0)
-                yield return Enum.GetName(type, 0);
-            else
-            {
-                foreach (int value in Enum.GetValues(type))
-                    if ((value & val) == value && value > 0)
-                        yield return Enum.GetName(type, value);
-
-                if (val == int.MaxValue)
-                    yield return "Everything";
-            }
-        }
+        private List<int> _filteredList = new List<int>();
 
         private void ApplySearch(string searchString)
         {
-            string numberSearchString = searchString.Replace(',', '.');
+            _filteredList.Clear();
+            foreach (var matcher in Matchers.RegisteredMatchers)
+                matcher.Prepare(searchString);
 
-            foreach (var child in SCEditorUtility.GetChildren(_listProperty.Copy(), true))
+            for (int i = 0; i < _listProperty.arraySize; i++)
             {
-                if (child.propertyType == SerializedPropertyType.Enum)
-                {
-                    if (SCEditorUtility.TryGetTypeFromProperty(child, out var type))
-                    {
-                        foreach (var text in SCEnumUtility.GetEnumCache(type).GetNamesForValue(child.enumValueFlag))
-                            Debug.Log(text);
-                    }
-                }
-
-                if (child.propertyType == SerializedPropertyType.String && child.stringValue.Contains(searchString))
-                    Debug.Log(child.propertyPath + " " + child.stringValue);
-
-                if (child.propertyType == SerializedPropertyType.Float)
-                {
-                    if (child.floatValue.ToString(CultureInfo.InvariantCulture).Contains(numberSearchString))
-                        Debug.Log(child.propertyPath + " " + child.floatValue);
-                }
-
+                if (IsPropertyMatching(_listProperty.GetArrayElementAtIndex(i), Matchers.RegisteredMatchers))
+                    _filteredList.Add(i);
             }
+        }
+
+        private static bool IsPropertyMatching(SerializedProperty property, IEnumerable<Matcher> matchers)
+        {
+            foreach (var child in SCEditorUtility.GetChildren(property, true))
+            {
+                foreach (var matcher in matchers)
+                    if (matcher.IsMatch(child))
+                        return true;
+            }
+            return false;
         }
 
         private void OnPopulatorDataSelected(object userdata)
