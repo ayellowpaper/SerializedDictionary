@@ -333,8 +333,15 @@ namespace AYellowpaper.SerializedCollections.Editor
             EditorGUI.DrawRect(searchRect.AppendLeft(1), borderColor);
             EditorGUI.DrawRect(searchRect.AppendRight(1, -1), borderColor);
             EditorGUI.DrawRect(searchRect.AppendDown(1, -1), borderColor);
+            searchRect = searchRect.WithHeight(18).CutHorizontal(6);
+            var bigFunctionsRect = searchRect.AppendRight(0);
+            bigFunctionsRect = bigFunctionsRect.AppendLeft(20);
+            GUI.Toggle(bigFunctionsRect, false, "V", EditorStyles.miniButtonRight);
+            bigFunctionsRect = bigFunctionsRect.AppendLeft(20);
+            GUI.Toggle(bigFunctionsRect, false, "K", EditorStyles.miniButtonLeft);
+
             EditorGUI.BeginChangeCheck();
-            _searchText = _searchField.OnToolbarGUI(searchRect.Cut(1, 6), _searchText);
+            _searchText = _searchField.OnToolbarGUI(searchRect.WithWidth(bigFunctionsRect.x - searchRect.x - 6), _searchText);
             if (EditorGUI.EndChangeCheck())
             {
                 ApplySearch(_searchText);
@@ -345,9 +352,16 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             var query = new SearchQuery(Matchers.RegisteredMatchers);
             query.SearchString = searchString;
+            int foundIndices = 0;
+            _pagedIndices.Clear();
             foreach (var foundEntry in query.Apply(_listProperty))
             {
-                Debug.Log(foundEntry);
+                _pagedIndices.Add(foundEntry.Index);
+
+                foundIndices++;
+
+                if (foundIndices >= _elementsPerPage)
+                    break;
             }
         }
 
