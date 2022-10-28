@@ -5,11 +5,11 @@ namespace AYellowpaper.SerializedCollections.Editor.Search
 {
     public class StringMatcher : Matcher
     {
-        public override bool IsMatch(SerializedProperty property)
+        public override string GetMatch(SerializedProperty property)
         {
             if (property.propertyType == SerializedPropertyType.String && property.stringValue.Contains(SearchString, System.StringComparison.InvariantCultureIgnoreCase))
-                return true;
-            return false;
+                return property.stringValue;
+            return null;
         }
     }
 }

@@ -10,14 +10,15 @@ namespace AYellowpaper.SerializedCollections.Editor.Search
             return searchString.Replace(',', '.');
         }
 
-        public override bool IsMatch(SerializedProperty property)
+        public override string GetMatch(SerializedProperty property)
         {
             if (property.propertyType == SerializedPropertyType.Float)
             {
-                if (property.floatValue.ToString(CultureInfo.InvariantCulture).Contains(SearchString))
-                    return true;
+                var val = property.floatValue.ToString(CultureInfo.InvariantCulture);
+                if (val.Contains(SearchString, System.StringComparison.InvariantCulture))
+                    return val;
             }
-            return false;
+            return null;
         }
     }
 }

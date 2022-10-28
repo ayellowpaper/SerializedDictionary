@@ -341,30 +341,14 @@ namespace AYellowpaper.SerializedCollections.Editor
             }
         }
 
-        private List<int> _filteredList = new List<int>();
-
         private void ApplySearch(string searchString)
         {
-            _filteredList.Clear();
-            foreach (var matcher in Matchers.RegisteredMatchers)
-                matcher.Prepare(searchString);
-
-            for (int i = 0; i < _listProperty.arraySize; i++)
+            var query = new SearchQuery(Matchers.RegisteredMatchers);
+            query.SearchString = searchString;
+            foreach (var foundEntry in query.Apply(_listProperty))
             {
-                if (IsPropertyMatching(_listProperty.GetArrayElementAtIndex(i), Matchers.RegisteredMatchers))
-                    _filteredList.Add(i);
+                Debug.Log(foundEntry);
             }
-        }
-
-        private static bool IsPropertyMatching(SerializedProperty property, IEnumerable<Matcher> matchers)
-        {
-            foreach (var child in SCEditorUtility.GetChildren(property, true))
-            {
-                foreach (var matcher in matchers)
-                    if (matcher.IsMatch(child))
-                        return true;
-            }
-            return false;
         }
 
         private void OnPopulatorDataSelected(object userdata)
@@ -555,7 +539,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void OnAdd(ReorderableList list)
         {
-            int targetIndex = list.selectedIndices.Count > 0 ? list.selectedIndices[0] : 0;
+            int targetIndex = list.selectedIndices.Count > 0 && list.selectedIndices[0] >= 0 ? list.selectedIndices[0] : 0;
             _listProperty.InsertArrayElementAtIndex(targetIndex);
         }
 

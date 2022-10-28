@@ -25,7 +25,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 var result = methodInfo.Invoke(null, parameters);
                 var flagValues = (int[])result.GetType().GetField("flagValues").GetValue(result);
                 var names = (string[])result.GetType().GetField("names").GetValue(result);
-                var cache = new EnumCache(flagValues, names);
+                var cache = new EnumCache(enumType, flagValues, names);
                 _cache.Add(enumType, cache);
                 return cache;
             }
@@ -38,30 +38,44 @@ namespace AYellowpaper.SerializedCollections.Editor
 
     internal record EnumCache
     {
+        public readonly Type Type;
+        public readonly bool IsFlag;
         public readonly int Length;
         public readonly int[] FlagValues;
         public readonly string[] Names;
 
         private readonly Dictionary<int, string[]> _namesByValue = new Dictionary<int, string[]>();
 
-        public EnumCache(int[] flagValues, string[] displayNames)
+        public EnumCache(Type type, int[] flagValues, string[] displayNames)
         {
+            Type = type;
             FlagValues = flagValues;
             Names = displayNames;
             Length = flagValues.Length;
+            IsFlag = Type.IsDefined(typeof(FlagsAttribute));
         }
 
-        internal string[] GetNamesForValue(int flagValue)
+        internal string[] GetNamesForValue(int value)
         {
-            if (_namesByValue.TryGetValue(flagValue, out var list))
+            if (_namesByValue.TryGetValue(value, out var list))
                 return list;
 
-            string[] array = Build(flagValue).ToArray();
-            _namesByValue.Add(flagValue, array);
+            string[] array = IsFlag ? GetFlagValues(value).ToArray() : new[] { GetEnumValue(value) };
+            _namesByValue.Add(value, array);
             return array;
         }
 
-        private IEnumerable<string> Build(int flagValue)
+        private string GetEnumValue(int value)
+        {
+            for (int i = 0; i < Length; i++)
+            {
+                if (FlagValues[i] == value)
+                    return Names[i];
+            }
+            return null;
+        }
+
+        private IEnumerable<string> GetFlagValues(int flagValue)
         {
             if (flagValue == 0)
             {
