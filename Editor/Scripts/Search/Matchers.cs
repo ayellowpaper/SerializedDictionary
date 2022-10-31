@@ -12,7 +12,7 @@ namespace AYellowpaper.SerializedCollections.Editor.Search
 
         static Matchers()
         {
-            _registeredMatchers.Add(new IntMatcher());
+            _registeredMatchers.Add(new NumericMatcher());
             _registeredMatchers.Add(new StringMatcher());
             _registeredMatchers.Add(new EnumMatcher());
         }

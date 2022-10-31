@@ -29,6 +29,11 @@ namespace AYellowpaper.SerializedCollections.Editor
             EditorPrefs.SetBool(EditorPrefsPrefix + path, value);
         }
 
+        public static float CalculateHeight(SerializedProperty property, DisplayType displayType)
+        {
+            return CalculateHeight(property, displayType == DisplayType.List ? true : false);
+        }
+
         public static float CalculateHeight(SerializedProperty property, bool drawAsList)
         {
             if (drawAsList)

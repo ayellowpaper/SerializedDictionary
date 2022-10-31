@@ -61,6 +61,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 return list;
 
             string[] array = IsFlag ? GetFlagValues(value).ToArray() : new[] { GetEnumValue(value) };
+
             _namesByValue.Add(value, array);
             return array;
         }
@@ -86,7 +87,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             for (int i = 0; i < Length; i++)
             {
                 int fv = FlagValues[i];
-                if ((fv & flagValue) == fv && fv > 0)
+                if ((fv & flagValue) == fv && fv != 0)
                     yield return Names[i];
             }
 

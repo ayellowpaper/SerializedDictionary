@@ -3,7 +3,7 @@ using UnityEditor;
 
 namespace AYellowpaper.SerializedCollections.Editor.Search
 {
-    public class IntMatcher : Matcher
+    public class NumericMatcher : Matcher
     {
         public override string ProcessSearchString(string searchString)
         {
@@ -15,6 +15,12 @@ namespace AYellowpaper.SerializedCollections.Editor.Search
             if (property.propertyType == SerializedPropertyType.Float)
             {
                 var val = property.floatValue.ToString(CultureInfo.InvariantCulture);
+                if (val.Contains(SearchString, System.StringComparison.InvariantCulture))
+                    return val;
+            }
+            else if (property.propertyType == SerializedPropertyType.Integer)
+            {
+                var val = property.intValue.ToString(CultureInfo.InvariantCulture);
                 if (val.Contains(SearchString, System.StringComparison.InvariantCulture))
                     return val;
             }
