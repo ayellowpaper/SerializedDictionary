@@ -27,18 +27,24 @@ namespace AYellowpaper.SerializedCollections.Editor.Search
             _matchers = matchers;
         }
 
-        public IEnumerable<SearchResultEntry> Apply(SerializedProperty property)
+        public List<PropertySearchResult> ApplyToProperty(SerializedProperty property)
+        {
+            TryGetMatchingProperties(property.Copy(), out var properties);
+            return properties;
+        }
+
+        public IEnumerable<SearchResultEntry> ApplyToArrayProperty(SerializedProperty property)
         {
             int arrayCount = property.arraySize;
             for (int i = 0; i < arrayCount; i++)
             {
                 var prop = property.GetArrayElementAtIndex(i);
-                if (GetMatchingProperties(prop.Copy(), out var properties))
+                if (TryGetMatchingProperties(prop.Copy(), out var properties))
                     yield return new SearchResultEntry(i, prop, properties);
             }
         }
 
-        private bool GetMatchingProperties(SerializedProperty property, out List<PropertySearchResult> matchingProperties)
+        private bool TryGetMatchingProperties(SerializedProperty property, out List<PropertySearchResult> matchingProperties)
         {
             matchingProperties = null;
             foreach (var child in SCEditorUtility.GetChildren(property, true))

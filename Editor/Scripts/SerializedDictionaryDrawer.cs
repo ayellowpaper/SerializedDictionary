@@ -1,4 +1,5 @@
 ﻿using AYellowpaper.SerializedCollections.Editor.Data;
+using AYellowpaper.SerializedCollections.Editor.Search;
 using AYellowpaper.SerializedCollections.Populators;
 using System;
 using System.Collections;
@@ -6,11 +7,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.IMGUI.Controls;
 using UnityEditorInternal;
 using UnityEngine;
-using UnityEditor.IMGUI.Controls;
-using System.Globalization;
-using AYellowpaper.SerializedCollections.Editor.Search;
 
 namespace AYellowpaper.SerializedCollections.Editor
 {
@@ -297,6 +296,11 @@ namespace AYellowpaper.SerializedCollections.Editor
             lastTopRect = lastTopRect.AppendLeft(30);
             DoOptionsButton(lastTopRect);
 
+            var detailsStyle = EditorStyles.miniLabel;
+            var detailsContent = EditorGUIUtility.TrTextContent($"{_listProperty.arraySize} Elements");
+            lastTopRect = lastTopRect.AppendLeft(detailsStyle.CalcSize(detailsContent).x, 5);
+            GUI.Label(lastTopRect, detailsContent, detailsStyle);
+
             if (!_singleEditing.IsValid)
             {
                 lastTopRect = lastTopRect.AppendLeft(lastTopRect.height + 5);
@@ -354,7 +358,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             query.SearchString = searchString;
             int foundIndices = 0;
             _pagedIndices.Clear();
-            foreach (var foundEntry in query.Apply(_listProperty))
+            foreach (var foundEntry in query.ApplyToArrayProperty(_listProperty))
             {
                 _pagedIndices.Add(foundEntry.Index);
 
