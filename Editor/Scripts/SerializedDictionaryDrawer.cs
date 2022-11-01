@@ -46,6 +46,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         private IReadOnlyList<PopulatorData> _populators;
         private Action _queuedAction;
         private SearchField _searchField;
+        private GUIContent _detailsContent;
 
         private ListState _activeState;
 
@@ -243,6 +244,11 @@ namespace AYellowpaper.SerializedCollections.Editor
             int endIndex = Mathf.Min(startIndex + _elementsPerPage, _activeState.ListSize);
             for (int i = startIndex; i < endIndex; i++)
                 _pagedIndices.Add(i);
+
+            string detailsString = _pagingElement.PageCount > 1
+                ? $"{_pagedIndices[0] + 1}..{_pagedIndices.Last() + 1} / {_activeState.ListSize} Elements"
+                : (_activeState.ListSize + " " + (_pagedIndices.Count == 1 ? "Element" : "Elements"));
+            _detailsContent = new GUIContent(detailsString);
         }
 
         private ReorderableList MakeList()
@@ -329,9 +335,8 @@ namespace AYellowpaper.SerializedCollections.Editor
             DoOptionsButton(lastTopRect);
 
             var detailsStyle = EditorStyles.miniLabel;
-            var detailsContent = EditorGUIUtility.TrTextContent($"{_activeState.ListSize} Elements");
-            lastTopRect = lastTopRect.AppendLeft(detailsStyle.CalcSize(detailsContent).x, 5);
-            GUI.Label(lastTopRect, detailsContent, detailsStyle);
+            lastTopRect = lastTopRect.AppendLeft(detailsStyle.CalcSize(_detailsContent).x, 5);
+            GUI.Label(lastTopRect, _detailsContent, detailsStyle);
 
             if (!_singleEditing.IsValid)
             {
