@@ -145,7 +145,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 if (!ListProperty.isExpanded)
                     return SingleHeaderHeight;
 
-                float height = 94;
+                float height = ReorderableList.headerHeight + 40;
                 if (_activeState.ListSize == 0)
                     height += 20;
                 foreach (int index in _pagedIndices)
@@ -471,8 +471,9 @@ namespace AYellowpaper.SerializedCollections.Editor
                 foreach (var targetObject in ListProperty.serializedObject.targetObjects)
                 {
                     Undo.RecordObject(targetObject, "Populate");
-                    var lookupTable = GetLookupTable(targetObject);
-                    var list = GetBackingList(targetObject);
+                    var dictionary = SCEditorUtility.GetParent(ListProperty);
+                    var lookupTable = GetLookupTable(dictionary);
+                    var list = GetBackingList(dictionary);
                     foreach (var key in elements)
                     {
                         var occurences = lookupTable.GetOccurences(key);
@@ -494,8 +495,9 @@ namespace AYellowpaper.SerializedCollections.Editor
                 foreach (var targetObject in ListProperty.serializedObject.targetObjects)
                 {
                     Undo.RecordObject(targetObject, "Populate");
-                    var lookupTable = GetLookupTable(targetObject);
-                    var list = GetBackingList(targetObject);
+                    var dictionary = SCEditorUtility.GetParent(ListProperty);
+                    var lookupTable = GetLookupTable(dictionary);
+                    var list = GetBackingList(dictionary);
 
                     List<int> duplicateIndices = new List<int>();
 
