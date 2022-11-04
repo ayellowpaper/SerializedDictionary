@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using static AYellowpaper.SerializedCollections.Editor.SerializedDictionaryDrawer;
 
 namespace AYellowpaper.SerializedCollections.Editor.States
 {
@@ -10,9 +11,9 @@ namespace AYellowpaper.SerializedCollections.Editor.States
         public abstract int ListSize { get; }
         public virtual string NoElementsText => "List is Empty.";
 
-        public readonly SerializedDictionaryDrawer Drawer;
+        public readonly DictionaryDrawer Drawer;
 
-        public ListState(SerializedDictionaryDrawer serializedDictionaryDrawer)
+        public ListState(DictionaryDrawer serializedDictionaryDrawer)
         {
             Drawer = serializedDictionaryDrawer;
         }
@@ -27,7 +28,7 @@ namespace AYellowpaper.SerializedCollections.Editor.States
 
         public virtual float GetHeightAtIndex(int index, bool drawKeyAsList, bool drawValueAsList)
         {
-            return SerializedDictionaryDrawer.CalculateHeightOfElement(GetPropertyAtIndex(index), drawKeyAsList, drawValueAsList);
+            return DictionaryDrawer.CalculateHeightOfElement(GetPropertyAtIndex(index), drawKeyAsList, drawValueAsList);
         }
     }
 }

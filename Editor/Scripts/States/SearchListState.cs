@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using System.Linq;
 using System;
+using static AYellowpaper.SerializedCollections.Editor.SerializedDictionaryDrawer;
 
 namespace AYellowpaper.SerializedCollections.Editor.States
 {
@@ -19,13 +20,13 @@ namespace AYellowpaper.SerializedCollections.Editor.States
         private HashSet<string> _foundProperties;
         private Color _previousColor;
 
-        public SearchListState(SerializedDictionaryDrawer serializedDictionaryDrawer) : base(serializedDictionaryDrawer)
+        public SearchListState(DictionaryDrawer serializedDictionaryDrawer) : base(serializedDictionaryDrawer)
         {
         }
 
         public override void DrawElement(Rect rect, SerializedProperty property, DisplayType displayType)
         {
-            SerializedDictionaryDrawer.DrawElement(rect, property, displayType, BeforeDrawingProperty, AfterDrawingProperty);
+            DictionaryDrawer.DrawElement(rect, property, displayType, BeforeDrawingProperty, AfterDrawingProperty);
         }
 
         private void BeforeDrawingProperty(SerializedProperty obj)

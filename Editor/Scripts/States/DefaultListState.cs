@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using static AYellowpaper.SerializedCollections.Editor.SerializedDictionaryDrawer;
 
 namespace AYellowpaper.SerializedCollections.Editor.States
 {
@@ -9,7 +10,7 @@ namespace AYellowpaper.SerializedCollections.Editor.States
     {
         public override int ListSize => Drawer.ListProperty.minArraySize;
 
-        public DefaultListState(SerializedDictionaryDrawer serializedDictionaryDrawer) : base(serializedDictionaryDrawer)
+        public DefaultListState(DictionaryDrawer serializedDictionaryDrawer) : base(serializedDictionaryDrawer)
         {
         }
 
@@ -32,7 +33,7 @@ namespace AYellowpaper.SerializedCollections.Editor.States
 
         public override void DrawElement(Rect rect, SerializedProperty property, DisplayType displayType)
         {
-            SerializedDictionaryDrawer.DrawElement(rect, property, displayType);
+            DictionaryDrawer.DrawElement(rect, property, displayType);
         }
 
         public override SerializedProperty GetPropertyAtIndex(int index)
