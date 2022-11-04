@@ -1,5 +1,4 @@
 ﻿using AYellowpaper.SerializedCollections.Editor.Data;
-using AYellowpaper.SerializedCollections.Editor.Search;
 using AYellowpaper.SerializedCollections.Editor.States;
 using AYellowpaper.SerializedCollections.Populators;
 using System;
@@ -27,6 +26,9 @@ namespace AYellowpaper.SerializedCollections.Editor
         private const bool ValueFlag = false;
         private static readonly Color BorderColor = new Color(36 / 255f, 36 / 255f, 36 / 255f);
         private static readonly List<int> NoEntriesList = new List<int>();
+
+        internal SerializedProperty ActiveListProperty;
+        private Dictionary<SerializedProperty, int> _arrayData;
 
         private bool _initialized = false;
         internal ReorderableList ReorderableList { get; private set; }
@@ -79,6 +81,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             DoList(position);
             ProcessState();
             ProcessQueuedAction();
+            property.serializedObject.ApplyModifiedProperties();
         }
 
         private void DoList(Rect position)
@@ -216,22 +219,21 @@ namespace AYellowpaper.SerializedCollections.Editor
                 _singleEditing.Invalidate();
             else if (!ListProperty.serializedObject.isEditingMultipleObjects && !_singleEditing.IsValid)
             {
-                _singleEditing.BackingList = GetBackingList(ListProperty.serializedObject.targetObject);
-                _singleEditing.LookupTable = GetLookupTableFromObject(ListProperty.serializedObject.targetObject);
+                var dictionary = SCEditorUtility.GetParent(ListProperty);
+                _singleEditing.BackingList = GetBackingList(dictionary);
+                _singleEditing.LookupTable = GetLookupTable(dictionary);
             }
         }
 
-        private ILookupTable GetLookupTableFromObject(UnityEngine.Object targetObject)
+        private ILookupTable GetLookupTable(object dictionary)
         {
-            var dictionary = fieldInfo.GetValue(targetObject);
             var propInfo = dictionary.GetType().GetProperty(LookupTableName, BindingFlags.Instance | BindingFlags.NonPublic);
             return (ILookupTable)propInfo.GetValue(dictionary);
         }
 
-        private IList GetBackingList(object targetObject)
+        private IList GetBackingList(object dictionary)
         {
             var listField = fieldInfo.FieldType.GetField(SerializedListName, BindingFlags.Instance | BindingFlags.NonPublic);
-            var dictionary = fieldInfo.GetValue(targetObject);
             return (IList)listField.GetValue(dictionary);
         }
 
@@ -353,7 +355,15 @@ namespace AYellowpaper.SerializedCollections.Editor
             EditorGUI.BeginChangeCheck();
             _showSearchBar = GUI.Toggle(lastTopRect, _showSearchBar, EditorGUIUtility.IconContent("d_Search Icon"), EditorStyles.miniButton);
             if (EditorGUI.EndChangeCheck())
+            {
                 UpdateHeaderHeight();
+                if (!_showSearchBar)
+                {
+                    if (_searchField.HasFocus())
+                        GUI.FocusControl(null);
+                    SearchText = string.Empty;
+                }
+            }
             lastTopRect = lastTopRect.AppendLeft(5);
 
             if (_pagingElement.PageCount > 1)
@@ -440,7 +450,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             foreach (var targetObject in ListProperty.serializedObject.targetObjects)
             {
                 Undo.RecordObject(targetObject, "Populate");
-                var lookupTable = GetLookupTableFromObject(targetObject);
+                var lookupTable = GetLookupTable(targetObject);
                 var list = GetBackingList(targetObject);
                 foreach (var key in elements)
                 {
@@ -463,7 +473,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             foreach (var targetObject in ListProperty.serializedObject.targetObjects)
             {
                 Undo.RecordObject(targetObject, "Populate");
-                var lookupTable = GetLookupTableFromObject(targetObject);
+                var lookupTable = GetLookupTable(targetObject);
                 var list = GetBackingList(targetObject);
 
                 List<int> duplicateIndices = new List<int>();
@@ -529,6 +539,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             Color prevColor = GUI.color;
             if (_singleEditing.IsValid)
             {
+                //Debug.Log(actualIndex + " " + _singleEditing.BackingList.Count + " " + _activeState.ListSize + " " + ListProperty.propertyPath);
                 var keyObject = _keyFieldInfo.GetValue(_singleEditing.BackingList[actualIndex]);
                 var occurences = _singleEditing.LookupTable.GetOccurences(keyObject);
                 if (occurences.Count > 1)
@@ -555,7 +566,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             using (new LabelWidth(rect.width * 0.4f))
             {
-                float height = SCEditorUtility.CalculateHeight(property.Copy(), DisplayType.List);
+                float height = SCEditorUtility.CalculateHeight(property.Copy(), displayType);
                 Rect groupRect = rect.CutLeft(-spaceForProperty).WithHeight(height);
                 GUI.BeginGroup(groupRect);
 
