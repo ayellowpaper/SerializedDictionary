@@ -15,6 +15,7 @@ namespace AYellowpaper.SerializedCollections.Editor.States
 
         public override void OnEnter()
         {
+            Drawer.ReorderableList.draggable = true;
         }
 
         public override void OnExit()
@@ -37,6 +38,19 @@ namespace AYellowpaper.SerializedCollections.Editor.States
         public override SerializedProperty GetPropertyAtIndex(int index)
         {
             return Drawer.ListProperty.GetArrayElementAtIndex(index);
+        }
+
+        public override void RemoveElementAt(int index)
+        {
+            Drawer.ListProperty.DeleteArrayElementAtIndex(index);
+            //UpdatePaging();
+            //if (actualIndex >= ListProperty.minArraySize)
+            //    list.index = _pagedIndices.Count - 1;
+        }
+
+        public override void InserElementAt(int index)
+        {
+            Drawer.ListProperty.InsertArrayElementAtIndex(index);
         }
     }
 }

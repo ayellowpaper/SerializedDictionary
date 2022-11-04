@@ -11,6 +11,7 @@ namespace AYellowpaper.SerializedCollections.Editor.States
     internal class SearchListState : ListState
     {
         public override int ListSize => _searchResults.Count;
+        public override string NoElementsText => "No Results";
         public bool OnlyShowMatchingValues { get; set; }
 
         private string _lastSearch = string.Empty;
@@ -43,6 +44,7 @@ namespace AYellowpaper.SerializedCollections.Editor.States
 
         public override void OnEnter()
         {
+            Drawer.ReorderableList.draggable = false;
         }
 
         public override void OnExit()
@@ -57,13 +59,13 @@ namespace AYellowpaper.SerializedCollections.Editor.States
             if (_lastSearch != Drawer.SearchText)
             {
                 _lastSearch = Drawer.SearchText;
-                SetSearchString(Drawer.SearchText);
+                PerformSearch(Drawer.SearchText);
             }
 
             return this;
         }
 
-        public void SetSearchString(string searchString)
+        public void PerformSearch(string searchString)
         {
             var query = new SearchQuery(Matchers.RegisteredMatchers);
             query.SearchString = searchString;
@@ -81,6 +83,20 @@ namespace AYellowpaper.SerializedCollections.Editor.States
         public override float GetHeightAtIndex(int index, bool drawKeyAsList, bool drawValueAsList)
         {
             return base.GetHeightAtIndex(index, drawKeyAsList, drawValueAsList);
+        }
+
+        public override void RemoveElementAt(int index)
+        {
+            var indexToDelete = _searchResults[index].Index;
+            Drawer.ListProperty.DeleteArrayElementAtIndex(indexToDelete);
+            PerformSearch(_lastSearch);
+        }
+
+        public override void InserElementAt(int index)
+        {
+            var indexToAdd = _searchResults[index].Index;
+            Drawer.ListProperty.InsertArrayElementAtIndex(indexToAdd);
+            PerformSearch(_lastSearch);
         }
     }
 }

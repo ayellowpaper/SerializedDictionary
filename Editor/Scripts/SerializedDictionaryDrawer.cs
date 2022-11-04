@@ -25,10 +25,11 @@ namespace AYellowpaper.SerializedCollections.Editor
         private const int SingleHeaderHeight = 20;
         private const bool KeyFlag = true;
         private const bool ValueFlag = false;
+        private static readonly Color BorderColor = new Color(36 / 255f, 36 / 255f, 36 / 255f);
         private static readonly List<int> NoEntriesList = new List<int>();
 
         private bool _initialized = false;
-        private ReorderableList _expandedList;
+        internal ReorderableList ReorderableList { get; private set; }
         private ReorderableList _unexpandedList;
         private SingleEditingData _singleEditing;
         private Type _entryType;
@@ -47,7 +48,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         private Action _queuedAction;
         private SearchField _searchField;
         private GUIContent _detailsContent;
-
+        private bool _showSearchBar = false;
         private ListState _activeState;
 
         internal SerializedProperty ListProperty { get; private set; }
@@ -83,7 +84,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         private void DoList(Rect position)
         {
             if (ListProperty.isExpanded)
-                _expandedList.DoList(position);
+                ReorderableList.DoList(position);
             else
             {
                 using (new GUI.ClipScope(new Rect(0, position.y, position.width + position.x, SingleHeaderHeight)))
@@ -164,8 +165,9 @@ namespace AYellowpaper.SerializedCollections.Editor
                 _pagedIndices = new List<int>();
                 UpdatePaging();
 
-                _expandedList = MakeList();
+                ReorderableList = MakeList();
                 _unexpandedList = MakeUnexpandedList();
+                UpdateHeaderHeight();
 
                 var listField = fieldInfo.FieldType.GetField(SerializedListName, BindingFlags.Instance | BindingFlags.NonPublic);
                 _entryType = listField.FieldType.GetGenericArguments()[0];
@@ -260,8 +262,18 @@ namespace AYellowpaper.SerializedCollections.Editor
             list.drawElementCallback += OnDrawElement;
             list.elementHeightCallback += OnGetElementHeight;
             list.drawHeaderCallback += OnDrawHeader;
-            list.headerHeight = SingleHeaderHeight * 3;
+            list.drawNoneElementCallback += OnDrawNone;
             return list;
+        }
+
+        private void UpdateHeaderHeight()
+        {
+            ReorderableList.headerHeight = SingleHeaderHeight * (2 + (_showSearchBar ? 1 : 0));
+        }
+
+        private void OnDrawNone(Rect rect)
+        {
+            EditorGUI.LabelField(rect, EditorGUIUtility.TrTextContent(_activeState.NoElementsText));
         }
 
         private ReorderableList MakeUnexpandedList()
@@ -314,7 +326,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             _pagingElement.OnGUI(rect);
             if (EditorGUI.EndChangeCheck())
             {
-                _expandedList.ClearSelection();
+                ReorderableList.ClearSelection();
                 UpdatePaging();
             }
         }
@@ -322,17 +334,33 @@ namespace AYellowpaper.SerializedCollections.Editor
         private void OnDrawHeader(Rect rect)
         {
             Rect topRect = rect.WithHeight(SingleHeaderHeight - 1);
-            Rect lastTopRect = topRect.AppendRight(0);
+            Rect adjustedTopRect = topRect.WithXAndWidth(_totalRect.x + 1, _totalRect.width - 1);
+
+            DoMainHeader(topRect);
+            if (_showSearchBar)
+            {
+                adjustedTopRect = adjustedTopRect.AppendDown(SingleHeaderHeight);
+                DoSearch(adjustedTopRect);
+            }
+            DoKeyValueRect(adjustedTopRect.AppendDown(SingleHeaderHeight));
+        }
+
+        private void DoMainHeader(Rect rect)
+        {
+            Rect lastTopRect = rect.AppendRight(0);
+
+            lastTopRect = lastTopRect.AppendLeft(24);
+            EditorGUI.BeginChangeCheck();
+            _showSearchBar = GUI.Toggle(lastTopRect, _showSearchBar, EditorGUIUtility.IconContent("d_Search Icon"), EditorStyles.miniButton);
+            if (EditorGUI.EndChangeCheck())
+                UpdateHeaderHeight();
+            lastTopRect = lastTopRect.AppendLeft(5);
 
             if (_pagingElement.PageCount > 1)
             {
                 lastTopRect = lastTopRect.AppendLeft(_pagingElement.GetDesiredWidth());
                 DoPaging(lastTopRect);
-                lastTopRect = lastTopRect.AppendLeft(5);
             }
-
-            lastTopRect = lastTopRect.AppendLeft(30);
-            DoOptionsButton(lastTopRect);
 
             var detailsStyle = EditorStyles.miniLabel;
             lastTopRect = lastTopRect.AppendLeft(detailsStyle.CalcSize(_detailsContent).x, 5);
@@ -345,16 +373,16 @@ namespace AYellowpaper.SerializedCollections.Editor
                 GUI.Label(lastTopRect, guicontent);
             }
 
-            EditorGUI.BeginProperty(topRect, _label, ListProperty);
-            ListProperty.isExpanded = EditorGUI.Foldout(topRect.WithXAndWidth(topRect.x - 5, lastTopRect.x - topRect.x), ListProperty.isExpanded, _label, true);
+            EditorGUI.BeginProperty(rect, _label, ListProperty);
+            ListProperty.isExpanded = EditorGUI.Foldout(rect.WithXAndWidth(rect.x - 5, lastTopRect.x - rect.x), ListProperty.isExpanded, _label, true);
             EditorGUI.EndProperty();
+        }
 
-            Rect searchRect = topRect.AppendDown(SingleHeaderHeight).WithXAndWidth(_totalRect.x + 1, _totalRect.width - 1);
-            Rect keyValueRect = searchRect.AppendDown(SingleHeaderHeight);
-
+        private void DoKeyValueRect(Rect rect)
+        {
             float width = EditorGUIUtility.labelWidth + 22;
-            Rect leftRect = keyValueRect.WithWidth(width);
-            Rect rightRect = leftRect.AppendRight(keyValueRect.width - width);
+            Rect leftRect = rect.WithWidth(width);
+            Rect rightRect = leftRect.AppendRight(rect.width - width);
 
             if (Event.current.type == EventType.Repaint && _propertyData != null)
             {
@@ -368,20 +396,21 @@ namespace AYellowpaper.SerializedCollections.Editor
                 DoDisplayTypeToggle(rightRect, ValueFlag);
             }
 
-            Color borderColor = new Color(36 / 255f, 36 / 255f, 36 / 255f);
-            EditorGUI.DrawRect(keyValueRect.AppendDown(1, -1), borderColor);
+            EditorGUI.DrawRect(rect.AppendDown(1, -1), BorderColor);
+        }
 
-            EditorGUI.DrawRect(searchRect.AppendLeft(1), borderColor);
-            EditorGUI.DrawRect(searchRect.AppendRight(1, -1), borderColor);
-            EditorGUI.DrawRect(searchRect.AppendDown(1, -1), borderColor);
-            searchRect = searchRect.WithHeight(18).CutHorizontal(6);
-            var bigFunctionsRect = searchRect.AppendRight(0);
-            bigFunctionsRect = bigFunctionsRect.AppendLeft(20);
-            GUI.Toggle(bigFunctionsRect, false, "V", EditorStyles.miniButtonRight);
-            bigFunctionsRect = bigFunctionsRect.AppendLeft(20);
-            GUI.Toggle(bigFunctionsRect, false, "K", EditorStyles.miniButtonLeft);
+        private void DoSearch(Rect rect)
+        {
+            EditorGUI.DrawRect(rect.AppendLeft(1), BorderColor);
+            EditorGUI.DrawRect(rect.AppendRight(1, -1), BorderColor);
+            EditorGUI.DrawRect(rect.AppendDown(1, -1), BorderColor);
+            rect = rect.CutHorizontal(6);
+            var bigFunctionsRect = rect.AppendRight(0);
 
-            SearchText = _searchField.OnToolbarGUI(searchRect.WithWidth(bigFunctionsRect.x - searchRect.x - 6), SearchText);
+            bigFunctionsRect = bigFunctionsRect.AppendLeft(30);
+            DoOptionsButton(bigFunctionsRect);
+
+            SearchText = _searchField.OnToolbarGUI(rect.WithWidth(bigFunctionsRect.x - rect.x - 6), SearchText);
         }
 
         private void OnPopulatorDataSelected(object userdata)
@@ -581,7 +610,8 @@ namespace AYellowpaper.SerializedCollections.Editor
         private void OnAdd(ReorderableList list)
         {
             int targetIndex = list.selectedIndices.Count > 0 && list.selectedIndices[0] >= 0 ? list.selectedIndices[0] : 0;
-            ListProperty.InsertArrayElementAtIndex(targetIndex);
+            int actualTargetIndex = targetIndex < _pagedIndices.Count ? _pagedIndices[targetIndex] : 0;
+            _activeState.InserElementAt(actualTargetIndex);
         }
 
         private void OnReorder(ReorderableList list, int oldIndex, int newIndex)
@@ -592,11 +622,13 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void OnRemove(ReorderableList list)
         {
-            int actualIndex = _pagedIndices[list.index];
-            ListProperty.DeleteArrayElementAtIndex(actualIndex);
+            _activeState.RemoveElementAt(_pagedIndices[list.index]);
             UpdatePaging();
-            if (actualIndex >= ListProperty.minArraySize)
-                list.index = _pagedIndices.Count - 1;
+            //int actualIndex = _pagedIndices[list.index];
+            //ListProperty.DeleteArrayElementAtIndex(actualIndex);
+            //UpdatePaging();
+            //if (actualIndex >= ListProperty.minArraySize)
+            //    list.index = _pagedIndices.Count - 1;
         }
     }
 }
