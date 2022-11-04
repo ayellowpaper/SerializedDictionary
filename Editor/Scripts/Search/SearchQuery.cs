@@ -51,12 +51,11 @@ namespace AYellowpaper.SerializedCollections.Editor.Search
             {
                 foreach (var matcher in _matchers)
                 {
-                    string matchingText = matcher.GetMatch(child);
-                    if (matchingText != null)
+                    if (matcher.IsMatch(child))
                     {
                         if (matchingProperties == null)
                             matchingProperties = new();
-                        matchingProperties.Add(new PropertySearchResult(child.Copy(), matchingText));
+                        matchingProperties.Add(new PropertySearchResult(child.Copy()));
                     }
                 }
             }

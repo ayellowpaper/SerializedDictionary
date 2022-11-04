@@ -15,8 +15,7 @@ namespace AYellowpaper.SerializedCollections.Editor.States
 
         private string _lastSearch = string.Empty;
         private List<SearchResultEntry> _searchResults = new List<SearchResultEntry>();
-        private IEnumerator<SerializedProperty> _foundProperties;
-        private SerializedProperty _activeSearchProperty;
+        private HashSet<string> _foundProperties;
         private Color _previousColor;
 
         public SearchListState(SerializedDictionaryDrawer serializedDictionaryDrawer) : base(serializedDictionaryDrawer)
@@ -30,17 +29,16 @@ namespace AYellowpaper.SerializedCollections.Editor.States
 
         private void BeforeDrawingProperty(SerializedProperty obj)
         {
-            _previousColor = GUI.color;
-            if (SerializedProperty.EqualContents(_activeSearchProperty, obj))
+            _previousColor = GUI.backgroundColor;
+            if (_foundProperties.Contains(obj.propertyPath))
             {
-                GUI.color = Color.yellow;
-                MoveNext();
+                GUI.backgroundColor = Color.blue;
             }
         }
 
         private void AfterDrawingProperty(SerializedProperty obj)
         {
-            GUI.color = _previousColor;
+            GUI.backgroundColor = _previousColor;
         }
 
         public override void OnEnter()
@@ -62,8 +60,6 @@ namespace AYellowpaper.SerializedCollections.Editor.States
                 SetSearchString(Drawer.SearchText);
             }
 
-            _foundProperties.Reset();
-
             return this;
         }
 
@@ -74,16 +70,7 @@ namespace AYellowpaper.SerializedCollections.Editor.States
             _searchResults.Clear();
             _searchResults.AddRange(query.ApplyToArrayProperty(Drawer.ListProperty));
 
-            _foundProperties = _searchResults.SelectMany(x => x.MatchingResults, (x, y) => y.Property).ToList().GetEnumerator();
-            MoveNext();
-        }
-        
-        void MoveNext()
-        {
-            if (_foundProperties.MoveNext())
-                _activeSearchProperty = _foundProperties.Current;
-            else
-                _activeSearchProperty = null;
+            _foundProperties = _searchResults.SelectMany(x => x.MatchingResults, (x, y) => y.Property.propertyPath).ToHashSet();
         }
 
         public override SerializedProperty GetPropertyAtIndex(int index)
