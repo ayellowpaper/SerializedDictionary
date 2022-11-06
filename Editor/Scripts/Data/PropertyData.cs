@@ -11,9 +11,14 @@ namespace AYellowpaper.SerializedCollections.Editor.Data
         private ElementData _keyData;
         [SerializeField]
         private ElementData _valueData;
+        [SerializeField]
+        private int _elementsPerPage = 5;
 
-        public ElementData KeyData => _keyData;
-        public ElementData ValueData => _valueData;
+        public int ElementsPerPage
+        {
+            get => _elementsPerPage;
+            set => _elementsPerPage = value;
+        }
 
         public ElementData GetElementData(bool fieldType)
         {

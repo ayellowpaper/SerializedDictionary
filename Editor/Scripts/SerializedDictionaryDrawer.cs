@@ -60,7 +60,6 @@ namespace AYellowpaper.SerializedCollections.Editor
             private bool _propertyListSettingsInitialized = false;
             private List<int> _pagedIndices;
             private PagingElement _pagingElement;
-            private int _elementsPerPage = 5;
             private int _lastListSize = -1;
             private IReadOnlyList<PopulatorData> _populators;
             private Action _queuedAction;
@@ -99,10 +98,14 @@ namespace AYellowpaper.SerializedCollections.Editor
                 _totalRect = position;
                 _label = new GUIContent(label);
 
+                EditorGUI.BeginChangeCheck();
                 DoList(position);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    property.serializedObject.ApplyModifiedProperties();
+                }
                 ProcessState();
                 ProcessQueuedAction();
-                property.serializedObject.ApplyModifiedProperties();
             }
 
             private void DoList(Rect position)
@@ -167,12 +170,10 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             private void InitializeIfNeeded(SerializedProperty property)
             {
-                property.serializedObject.Update();
                 ListProperty = property.FindPropertyRelative(SerializedListName);
 
                 if (!_initialized)
                 {
-
                     _initialized = true;
                     _keyValueStyle = new GUIStyle(EditorStyles.toolbarButton);
                     _keyValueStyle.padding = new RectOffset(0, 0, 0, 0);
@@ -184,6 +185,11 @@ namespace AYellowpaper.SerializedCollections.Editor
                     _activeState = DefaultState;
 
                     _dictionaryAttribute = _fieldInfo.GetCustomAttribute<SerializedDictionaryAttribute>();
+
+
+                    _propertyData = SCEditorUtility.GetPropertyData(ListProperty);
+                    _propertyData.GetElementData(SCEditorUtility.KeyFlag).Settings.DisplayName = _dictionaryAttribute?.KeyName ?? "Key";
+                    _propertyData.GetElementData(SCEditorUtility.ValueFlag).Settings.DisplayName = _dictionaryAttribute?.ValueName ?? "Value";
 
                     _pagingElement = new PagingElement();
                     _pagedIndices = new List<int>();
@@ -200,10 +206,6 @@ namespace AYellowpaper.SerializedCollections.Editor
                     _singleEditing = new SingleEditingData();
 
                     _populators = PopulatorCache.GetPopulatorsForType(_keyFieldInfo.FieldType);
-
-                    _propertyData = SCEditorUtility.GetPropertyData(ListProperty);
-                    _propertyData.GetElementData(SCEditorUtility.KeyFlag).Settings.DisplayName = _dictionaryAttribute?.KeyName ?? "Key";
-                    _propertyData.GetElementData(SCEditorUtility.ValueFlag).Settings.DisplayName = _dictionaryAttribute?.ValueName ?? "Value";
 
                     _searchField = new SearchField();
                 }
@@ -260,13 +262,14 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             private void UpdatePaging()
             {
-                _pagingElement.PageCount = Mathf.Max(1, Mathf.CeilToInt((float)_activeState.ListSize / _elementsPerPage));
+                var elementsPerPage = _propertyData.ElementsPerPage;
+                _pagingElement.PageCount = Mathf.Max(1, Mathf.CeilToInt((float)_activeState.ListSize / elementsPerPage));
 
                 _pagedIndices.Clear();
-                _pagedIndices.Capacity = Mathf.Max(_elementsPerPage, _pagedIndices.Capacity);
+                _pagedIndices.Capacity = Mathf.Max(elementsPerPage, _pagedIndices.Capacity);
 
-                int startIndex = (_pagingElement.Page - 1) * _elementsPerPage;
-                int endIndex = Mathf.Min(startIndex + _elementsPerPage, _activeState.ListSize);
+                int startIndex = (_pagingElement.Page - 1) * elementsPerPage;
+                int endIndex = Mathf.Min(startIndex + elementsPerPage, _activeState.ListSize);
                 for (int i = startIndex; i < endIndex; i++)
                     _pagedIndices.Add(i);
 
@@ -359,7 +362,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 Rect topRect = rect.WithHeight(SingleHeaderHeight - 1);
                 Rect adjustedTopRect = topRect.WithXAndWidth(_totalRect.x + 1, _totalRect.width - 1);
 
-                DoMainHeader(topRect);
+                DoMainHeader(adjustedTopRect.CutLeft(topRect.x - adjustedTopRect.x));
                 if (_showSearchBar)
                 {
                     adjustedTopRect = adjustedTopRect.AppendDown(SingleHeaderHeight);
@@ -371,6 +374,9 @@ namespace AYellowpaper.SerializedCollections.Editor
             private void DoMainHeader(Rect rect)
             {
                 Rect lastTopRect = rect.AppendRight(0);
+
+                lastTopRect = lastTopRect.AppendLeft(20);
+                GUI.Button(lastTopRect, EditorGUIUtility.IconContent("pane options@2x"), EditorStyles.iconButton);
 
                 lastTopRect = lastTopRect.AppendLeft(24);
                 EditorGUI.BeginChangeCheck();

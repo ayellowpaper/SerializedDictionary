@@ -51,7 +51,6 @@ namespace AYellowpaper.SerializedCollections.Editor.States
 
         public override void InserElementAt(int index)
         {
-            Debug.Log("Adding to " + Drawer.ListProperty.propertyPath + " at " + index);
             Drawer.ListProperty.InsertArrayElementAtIndex(index);
             Drawer.ListProperty.serializedObject.ApplyModifiedProperties();
         }
