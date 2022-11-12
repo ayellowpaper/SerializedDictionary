@@ -12,12 +12,12 @@ namespace AYellowpaper.SerializedCollections.Editor.Data
         [SerializeField]
         private ElementData _valueData;
         [SerializeField]
-        private int _elementsPerPage = 5;
+        private bool _alwaysShowSearch = false;
 
-        public int ElementsPerPage
+        public bool AlwaysShowSearch
         {
-            get => _elementsPerPage;
-            set => _elementsPerPage = value;
+            get => _alwaysShowSearch;
+            set => _alwaysShowSearch = value;
         }
 
         public ElementData GetElementData(bool fieldType)

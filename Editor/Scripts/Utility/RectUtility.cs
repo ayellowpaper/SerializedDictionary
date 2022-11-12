@@ -23,12 +23,12 @@ namespace AYellowpaper.SerializedCollections.Editor
         public static Rect AppendUp(this Rect rect, float height) => new Rect(rect.x, rect.y - height, rect.width, height);
         public static Rect AppendUp(this Rect rect, float height, float space) => new Rect(rect.x, rect.y - space - height, rect.width, height);
         public static Rect AppendDown(this Rect rect, float height) => new Rect(rect.x, rect.y + rect.height, rect.width, height);
-        public static Rect AppendDown(this Rect rect, float height, float space) => new Rect(rect.x, rect.y +rect.height + space, rect.width, height);
+        public static Rect AppendDown(this Rect rect, float height, float space) => new Rect(rect.x, rect.y + rect.height + space, rect.width, height);
 
         public static Rect CutLeft(this Rect rect, float width) => new Rect(rect.x + width, rect.y, rect.width - width, rect.height);
         public static Rect CutRight(this Rect rect, float width) => new Rect(rect.x, rect.y, rect.width - width, rect.height);
-        public static Rect CutTop(this Rect rect, float height) => new Rect(rect.x, rect.y, rect.width, rect.height - height);
-        public static Rect CutBottom(this Rect rect, float height) => new Rect(rect.x, rect.y + height, rect.width, rect.height - height);
+        public static Rect CutTop(this Rect rect, float height) => new Rect(rect.x, rect.y + height, rect.width, rect.height - height);
+        public static Rect CutBottom(this Rect rect, float height) => new Rect(rect.x, rect.y, rect.width, rect.height - height);
 
         public static Rect CutHorizontal(this Rect rect, float leftAndRight) => CutHorizontal(rect, leftAndRight, leftAndRight);
         public static Rect CutHorizontal(this Rect rect, float left, float right) => new Rect(rect.x + left, rect.y, rect.width - left - right, rect.height);

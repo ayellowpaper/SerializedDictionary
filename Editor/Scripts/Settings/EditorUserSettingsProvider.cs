@@ -10,6 +10,8 @@ namespace AYellowpaper.SerializedCollections.Editor
 {
     public class EditorUserSettingsProvider : SettingsProvider
     {
+        public const string PreferencesPath = "Preferences/Serialized Collections";
+
         private SerializedObject _serializedObject;
         private SerializedProperty _alwaysShowSearch;
         private SerializedProperty _pageCountForSearch;
@@ -23,7 +25,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         [SettingsProvider]
         public static SettingsProvider CreateProvider()
         {
-            var provider = new EditorUserSettingsProvider("Preferences/Serialized Collections", SettingsScope.User);
+            var provider = new EditorUserSettingsProvider(PreferencesPath, SettingsScope.User);
 
             provider.keywords = GetSearchKeywordsFromGUIContentProperties<Styles>();
             return provider;

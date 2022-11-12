@@ -78,6 +78,18 @@ namespace AYellowpaper.SerializedCollections.Editor
             return data;
         }
 
+        public static void SavePropertyData(SerializedProperty property, PropertyData propertyData)
+        {
+            var json = EditorJsonUtility.ToJson(propertyData);
+            EditorPrefs.SetString(EditorPrefsPrefix + property.propertyPath, json);
+        }
+
+        public static bool ShouldShowSearch(int pages)
+        {
+            var settings = EditorUserSettings.Get();
+            return settings.AlwaysShowSearch ? true : pages >= settings.PageCountForSearch;
+        }
+
         public static bool HasDrawerForType(Type type)
         {
             Type attributeUtilityType = typeof(SerializedProperty).Assembly.GetType("UnityEditor.ScriptAttributeUtility");
@@ -89,18 +101,18 @@ namespace AYellowpaper.SerializedCollections.Editor
             return getDrawerMethod.Invoke(null, new object[] { type }) != null;
         }
 
-        internal static void AddGenericMenuItem(GenericMenu genericMenu, bool isEnabled, GUIContent content, GenericMenu.MenuFunction action)
+        internal static void AddGenericMenuItem(GenericMenu genericMenu, bool isOn, bool isEnabled, GUIContent content, GenericMenu.MenuFunction action)
         {
             if (isEnabled)
-                genericMenu.AddItem(content, false, action);
+                genericMenu.AddItem(content, isOn, action);
             else
                 genericMenu.AddDisabledItem(content);
         }
 
-        internal static void AddGenericMenuItem(GenericMenu genericMenu, bool isEnabled, GUIContent content, GenericMenu.MenuFunction2 action, object userData)
+        internal static void AddGenericMenuItem(GenericMenu genericMenu, bool isOn, bool isEnabled, GUIContent content, GenericMenu.MenuFunction2 action, object userData)
         {
             if (isEnabled)
-                genericMenu.AddItem(content, false, action, userData);
+                genericMenu.AddItem(content, isOn, action, userData);
             else
                 genericMenu.AddDisabledItem(content);
         }

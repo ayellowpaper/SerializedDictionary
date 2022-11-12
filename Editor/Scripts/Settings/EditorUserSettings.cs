@@ -17,7 +17,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         private int _elementsPerPage = 10;
 
         public bool AlwaysShowSearch => _alwaysShowSearch;
-        public int PageCount => _pageCountForSearch;
+        public int PageCountForSearch => _pageCountForSearch;
         public int ElementsPerPage => _elementsPerPage;
 
         private static EditorUserSettings _instance;
