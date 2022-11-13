@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace AYellowpaper.SerializedCollections.Populators
 {
-    public abstract class Populator : ScriptableObject
+    public abstract class KeysGenerator : ScriptableObject
     {
         public virtual string Title => GetType().Name;
         public virtual string Description => "";

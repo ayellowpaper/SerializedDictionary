@@ -4,8 +4,8 @@ using UnityEngine;
 
 namespace AYellowpaper.SerializedCollections.Populators
 {
-    [Populator("Populate Enum", typeof(System.Enum))]
-    public class EnumPopulator : Populator
+    [KeysGenerator("Populate Enum", typeof(System.Enum))]
+    public class EnumGenerator : KeysGenerator
     {
         public override bool RequiresWindow => false;
 

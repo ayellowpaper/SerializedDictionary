@@ -64,7 +64,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             private List<int> _pagedIndices;
             private PagingElement _pagingElement;
             private int _lastListSize = -1;
-            private IReadOnlyList<PopulatorData> _populators;
+            private IReadOnlyList<KeysGeneratorData> _populators;
             private Action _queuedAction;
             private SearchField _searchField;
             private GUIContent _detailsContent;
@@ -203,7 +203,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
                     _singleEditing = new SingleEditingData();
 
-                    _populators = PopulatorCache.GetPopulatorsForType(_keyFieldInfo.FieldType);
+                    _populators = KeysGeneratorCache.GetPopulatorsForType(_keyFieldInfo.FieldType);
                 }
 
                 void InitializeSettings(bool fieldFlag)
@@ -373,7 +373,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             private void DoMainHeader(Rect rect)
             {
-                Rect lastTopRect = rect.AppendRight(0);
+                Rect lastTopRect = rect.AppendRight(0).WithHeight(EditorGUIUtility.singleLineHeight);
 
                 lastTopRect = lastTopRect.AppendLeft(20);
                 DoOptionsButton(lastTopRect);
@@ -405,19 +405,28 @@ namespace AYellowpaper.SerializedCollections.Editor
             {
                 if (GUI.Button(rect, EditorGUIUtility.IconContent("pane options@2x"), EditorStyles.iconButton))
                 {
-                    var gm = new GenericMenu();
-                    SCEditorUtility.AddGenericMenuItem(gm, false, true, new GUIContent("Clear"), () => QueueAction(() => ListProperty.ClearArray()));
-                    gm.AddSeparator(string.Empty);
-                    SCEditorUtility.AddGenericMenuItem(gm, false, _singleEditing.IsValid, new GUIContent("Remove Conflicts"), () => QueueAction(RemoveConflicts));
-                    foreach (var populatorData in _populators)
-                    {
-                        SCEditorUtility.AddGenericMenuItem(gm, false, _singleEditing.IsValid, new GUIContent(populatorData.Name), OnPopulatorDataSelected, populatorData.PopulatorType);
-                    }
-                    gm.AddSeparator(string.Empty);
-                    SCEditorUtility.AddGenericMenuItem(gm, _propertyData.AlwaysShowSearch, true, new GUIContent("Always Show Search"), ToggleAlwaysShowSearchPropertyData);
-                    gm.AddItem(new GUIContent("Preferences..."), false, () => SettingsService.OpenUserPreferences(EditorUserSettingsProvider.PreferencesPath));
-                    gm.DropDown(rect);
+                    OpenStuff(rect);
+                    //var gm = new GenericMenu();
+                    //SCEditorUtility.AddGenericMenuItem(gm, false, true, new GUIContent("Clear"), () => QueueAction(() => ListProperty.ClearArray()));
+                    //SCEditorUtility.AddGenericMenuItem(gm, false, _singleEditing.IsValid, new GUIContent("Remove Conflicts"), () => QueueAction(RemoveConflicts));
+                    //SCEditorUtility.AddGenericMenuItem(gm, false, true, new GUIContent("Bulk Edit..."), () => OpenStuff(rect));
+                    ////foreach (var populatorData in _populators)
+                    ////{
+                    ////    SCEditorUtility.AddGenericMenuItem(gm, false, _singleEditing.IsValid, new GUIContent(populatorData.Name), OnPopulatorDataSelected, populatorData.PopulatorType);
+                    ////}
+                    //gm.AddSeparator(string.Empty);
+                    //SCEditorUtility.AddGenericMenuItem(gm, _propertyData.AlwaysShowSearch, true, new GUIContent("Always Show Search"), ToggleAlwaysShowSearchPropertyData);
+                    //gm.AddItem(new GUIContent("Preferences..."), false, () => SettingsService.OpenUserPreferences(EditorUserSettingsProvider.PreferencesPath));
+                    //gm.DropDown(rect);
                 }
+            }
+
+            private void OpenStuff(Rect rect)
+            {
+                var screenRect = GUIUtility.GUIToScreenRect(rect);
+                var window = ScriptableObject.CreateInstance<KeysGeneratorSelectorWindow>();
+                window.Initialize(_populators);
+                window.ShowAsDropDown(screenRect, new Vector2(400, 200));
             }
 
             private void ToggleAlwaysShowSearchPropertyData()
@@ -458,11 +467,11 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             private void OnPopulatorDataSelected(object userdata)
             {
-                var populator = (Populator)ScriptableObject.CreateInstance((Type)userdata);
+                var populator = (KeysGenerator)ScriptableObject.CreateInstance((Type)userdata);
 
                 if (populator.RequiresWindow)
                 {
-                    var window = EditorWindow.GetWindow<PopulatorWindow>();
+                    var window = EditorWindow.GetWindow<KeysGeneratorWindow>();
                     window.Init(populator, x => QueueAction(() => ApplyPopulator(x.Populator)));
                     window.ShowModal();
                 }
@@ -475,7 +484,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 _queuedAction = action;
             }
 
-            private void ApplyPopulator(Populator populator)
+            private void ApplyPopulator(KeysGenerator populator)
             {
                 var elements = populator.GetElements(_keyFieldInfo.FieldType);
                 object entry = Activator.CreateInstance(_entryType);

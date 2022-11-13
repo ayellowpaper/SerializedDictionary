@@ -5,8 +5,8 @@ using UnityEditor;
 
 namespace AYellowpaper.SerializedCollections.Populators
 {
-    [CustomEditor(typeof(Populator), true)]
-    public class PopulatorEditor : UnityEditor.Editor
+    [CustomEditor(typeof(KeysGenerator), true)]
+    public class KeysGeneratorEditor : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {

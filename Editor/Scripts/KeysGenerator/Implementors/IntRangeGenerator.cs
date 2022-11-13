@@ -5,8 +5,8 @@ using UnityEngine;
 
 namespace AYellowpaper.SerializedCollections.Populators
 {
-    [Populator("Int Range", typeof(int))]
-    public class IntRangePopulator : Populator
+    [KeysGenerator("Int Range", typeof(int))]
+    public class IntRangeGenerator : KeysGenerator
     {
         [SerializeField]
         private int _startValue = 1;

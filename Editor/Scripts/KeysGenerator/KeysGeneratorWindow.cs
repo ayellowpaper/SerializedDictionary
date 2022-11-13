@@ -6,12 +6,12 @@ using AYellowpaper.SerializedCollections.Editor;
 
 namespace AYellowpaper.SerializedCollections.Populators
 {
-    public class PopulatorWindow : EditorWindow
+    public class KeysGeneratorWindow : EditorWindow
     {
         [SerializeField]
         private bool _removeOtherKeys = false;
 
-        private Populator _populator;
+        private KeysGenerator _populator;
         private UnityEditor.Editor _populatorEditor;
         private bool _heightWasInitialized = false;
         private GUIContent _descriptionContent;
@@ -41,7 +41,7 @@ namespace AYellowpaper.SerializedCollections.Populators
             }
         }
 
-        public void Init(Populator populator, System.Action<PopulatorWindowEventArgs> callback)
+        public void Init(KeysGenerator populator, System.Action<PopulatorWindowEventArgs> callback)
         {
             _populator = populator;
             _populatorEditor = UnityEditor.Editor.CreateEditor(_populator);
@@ -53,9 +53,9 @@ namespace AYellowpaper.SerializedCollections.Populators
 
     public class PopulatorWindowEventArgs : System.EventArgs
     {
-        public Populator Populator { get; private set; }
+        public KeysGenerator Populator { get; private set; }
 
-        public PopulatorWindowEventArgs(Populator populator)
+        public PopulatorWindowEventArgs(KeysGenerator populator)
         {
             Populator = populator;
         }

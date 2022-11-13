@@ -3,12 +3,12 @@
 namespace AYellowpaper.SerializedCollections.Populators
 {
     [AttributeUsage(AttributeTargets.Class)]
-    public class PopulatorAttribute : Attribute
+    public class KeysGeneratorAttribute : Attribute
     {
         public readonly string Name;
         public readonly Type TargetType;
 
-        public PopulatorAttribute(string name, Type targetType)
+        public KeysGeneratorAttribute(string name, Type targetType)
         {
             Name = name;
             TargetType = targetType;
