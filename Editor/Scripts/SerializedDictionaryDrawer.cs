@@ -427,6 +427,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 var window = ScriptableObject.CreateInstance<KeysGeneratorSelectorWindow>();
                 window.Initialize(_populators);
                 window.ShowAsDropDown(screenRect, new Vector2(400, 200));
+                window.OnApply += ApplyPopulatorQueued;
             }
 
             private void ToggleAlwaysShowSearchPropertyData()
@@ -465,26 +466,17 @@ namespace AYellowpaper.SerializedCollections.Editor
                 SearchText = _searchField.OnToolbarGUI(rect.CutTop(2).CutHorizontal(6), SearchText);
             }
 
-            private void OnPopulatorDataSelected(object userdata)
-            {
-                var populator = (KeysGenerator)ScriptableObject.CreateInstance((Type)userdata);
-
-                if (populator.RequiresWindow)
-                {
-                    var window = EditorWindow.GetWindow<KeysGeneratorWindow>();
-                    window.Init(populator, x => QueueAction(() => ApplyPopulator(x.Populator)));
-                    window.ShowModal();
-                }
-                else
-                    QueueAction(() => ApplyPopulator(populator));
-            }
-
             private void QueueAction(Action action)
             {
                 _queuedAction = action;
             }
 
-            private void ApplyPopulator(KeysGenerator populator)
+            private void ApplyPopulatorQueued(KeysGenerator populator, ModificationType modificationType)
+            {
+                QueueAction(() => ApplyPopulator(populator, modificationType));
+            }
+
+            private void ApplyPopulator(KeysGenerator populator, ModificationType modificationType)
             {
                 var elements = populator.GetElements(_keyFieldInfo.FieldType);
                 object entry = Activator.CreateInstance(_entryType);
@@ -495,14 +487,38 @@ namespace AYellowpaper.SerializedCollections.Editor
                     var dictionary = SCEditorUtility.GetParent(ListProperty);
                     var lookupTable = GetLookupTable(dictionary);
                     var list = GetBackingList(dictionary);
-                    foreach (var key in elements)
+
+                    if (modificationType == ModificationType.Add)
                     {
-                        var occurences = lookupTable.GetOccurences(key);
-                        if (occurences.Count > 0)
-                            continue;
-                        _keyFieldInfo.SetValue(entry, key);
-                        list.Add(entry);
+                        foreach (var key in elements)
+                        {
+                            var occurences = lookupTable.GetOccurences(key);
+                            if (occurences.Count > 0)
+                                continue;
+                            _keyFieldInfo.SetValue(entry, key);
+                            Debug.Log("adding");
+                            list.Add(entry);
+                        }
                     }
+                    else if (modificationType == ModificationType.Remove)
+                    {
+                        foreach (var existingKey in lookupTable.Keys)
+                        {
+                            Debug.Log("removing");
+                            list.Remove(existingKey);
+                        }
+                    }
+                    else if (modificationType == ModificationType.Confine)
+                    {
+                        var keysToRemove = lookupTable.Keys.OfType<object>().ToHashSet();
+                        foreach (var key in elements)
+                            keysToRemove.Remove(key);
+
+                        foreach (var keyToRemove in keysToRemove)
+                            list.Remove(keyToRemove);
+                    }
+
+
                     // TODO: This is only done because OnAfterDeserialize doesn't fire. Not really obvious why this has to be called manually here
                     lookupTable.RecalculateOccurences();
                     PrefabUtility.RecordPrefabInstancePropertyModifications(targetObject);

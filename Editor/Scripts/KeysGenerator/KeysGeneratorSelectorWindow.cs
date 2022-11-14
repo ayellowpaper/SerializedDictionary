@@ -21,6 +21,9 @@ namespace AYellowpaper.SerializedCollections.Populators
         private List<KeysGeneratorData> _generatorsData;
         private int _undoStart;
         private Dictionary<Type, KeysGenerator> _keysGenerators = new Dictionary<Type, KeysGenerator>();
+        private string _detailsText;
+
+        public event Action<KeysGenerator, ModificationType> OnApply;
 
         private void OnGUI()
         {
@@ -41,27 +44,45 @@ namespace AYellowpaper.SerializedCollections.Populators
             _editor.OnInspectorGUI();
             if (EditorGUI.EndChangeCheck())
             {
-                //var enumerable = _generator.GetElements(_generatorsData[_selectedIndex].TargetType);
-                //int i = 0;
-                //var enumerator = enumerable.GetEnumerator();
-                //while (enumerator.MoveNext())
-                //    i++;
-                //Debug.Log(i);
+                UpdateDetailsText();
             }
             EditorGUILayout.EndScrollView();
+            EditorGUILayout.LabelField(_detailsText);
 
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
             DoModificationToggles();
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("3 Elements");
-            GUILayout.Button("Apply");
+            EditorGUILayout.LabelField($"Result Count: 10 (3 Added, 2 Removed)");
+            if (GUILayout.Button("Apply"))
+            {
+                OnApply?.Invoke(_editor.target as KeysGenerator, _modificationType);
+                OnApply = null;
+                Close();
+            }
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.EndVertical();
 
             EditorGUILayout.EndHorizontal();
+        }
+
+        private void UpdateDetailsText()
+        {
+            var enumerable = _generator.GetElements(_generatorsData[_selectedIndex].TargetType);
+            int count = 0;
+            var enumerator = enumerable.GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                count++;
+                if (count > 100)
+                {
+                    _detailsText = "over 100 Elements";
+                    return;
+                }
+            }
+            _detailsText = $"{count} Elements";
         }
 
         private void OnDisable()
@@ -75,9 +96,9 @@ namespace AYellowpaper.SerializedCollections.Populators
 
         private void DoModificationToggles()
         {
-            DoModificationToggle("Add", ModificationType.Add);
-            DoModificationToggle("Set", ModificationType.Set);
-            DoModificationToggle("Remove", ModificationType.Remove);
+            DoModificationToggle(EditorGUIUtility.TrTextContent("Add", "Add the generated missing keys to the target."), ModificationType.Add);
+            DoModificationToggle(EditorGUIUtility.TrTextContent("Remove", "Remove the generated keys form the target."), ModificationType.Remove);
+            DoModificationToggle(EditorGUIUtility.TrTextContent("Confine", "Remove all keys that are not part of the generated keys from the target."), ModificationType.Confine);
         }
 
         private void DoGeneratorsToggles()
@@ -92,9 +113,9 @@ namespace AYellowpaper.SerializedCollections.Populators
             }
         }
 
-        private void DoModificationToggle(string label, ModificationType modificationType)
+        private void DoModificationToggle(GUIContent content, ModificationType modificationType)
         {
-            if (GUILayout.Toggle(modificationType == _modificationType, label, EditorStyles.toolbarButton))
+            if (GUILayout.Toggle(modificationType == _modificationType, content, EditorStyles.toolbarButton))
                 _modificationType = modificationType;
         }
 
@@ -127,7 +148,6 @@ namespace AYellowpaper.SerializedCollections.Populators
             Undo.RecordObject(this, "Change Window");
             _selectedIndex = index;
             UpdateGeneratorAndEditorIfNeeded();
-
         }
 
         private void UpdateGeneratorAndEditorIfNeeded()
@@ -140,6 +160,8 @@ namespace AYellowpaper.SerializedCollections.Populators
             if (_editor != null)
                 DestroyImmediate(_editor);
             _editor = UnityEditor.Editor.CreateEditor(_generator);
+
+            UpdateDetailsText();
         }
 
         private KeysGenerator GetOrCreateKeysGenerator(Type type)

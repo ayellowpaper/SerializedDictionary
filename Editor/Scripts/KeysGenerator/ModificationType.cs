@@ -10,8 +10,8 @@ namespace AYellowpaper.SerializedCollections
     {
         None = 0,
         Add = 1 << 0,
-        Set = 1 << 1,
-        Remove = 1 << 2,
+        Remove = 1 << 1,
+        Confine = 1 << 2,
         All = ~0,
     }
 }

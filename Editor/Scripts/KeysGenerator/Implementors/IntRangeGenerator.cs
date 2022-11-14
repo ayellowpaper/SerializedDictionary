@@ -15,7 +15,9 @@ namespace AYellowpaper.SerializedCollections.Populators
 
         public override IEnumerable GetElements(Type type)
         {
-            for (int i = _startValue; i <= _endValue; i++)
+            int dir = Math.Sign(_endValue - _startValue);
+            dir = dir == 0 ? 1 : dir;
+            for (int i = _startValue; i <= _endValue; i += dir)
                 yield return i;
         }
     }

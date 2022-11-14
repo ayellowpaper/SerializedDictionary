@@ -8,9 +8,6 @@ namespace AYellowpaper.SerializedCollections.Populators
 {
     public class KeysGeneratorWindow : EditorWindow
     {
-        [SerializeField]
-        private bool _removeOtherKeys = false;
-
         private KeysGenerator _populator;
         private UnityEditor.Editor _populatorEditor;
         private bool _heightWasInitialized = false;

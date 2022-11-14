@@ -17,7 +17,7 @@ namespace AYellowpaper.SerializedCollections.Populators
 
         public override IEnumerable GetElements(Type type)
         {
-            for (int i = 0; i < _stepCount; i++)
+            for (int i = 0; i <= _stepCount; i++)
             {
                 yield return _startIndex + i * _stepDistance;
             }
