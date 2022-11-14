@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace AYellowpaper.SerializedCollections
 {
-    internal interface ILookupTable
+    internal interface IKeyable
     {
         void RecalculateOccurences();
         IReadOnlyList<int> GetOccurences(object key);

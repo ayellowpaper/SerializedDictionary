@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace AYellowpaper.SerializedCollections
 {
-    internal class DictionaryLookupTable<TKey, TValue> : ILookupTable
+    internal class DictionaryLookupTable<TKey, TValue> : IKeyable
     {
         private SerializedDictionary<TKey, TValue> _dictionary;
         private Dictionary<TKey, List<int>> _occurences = new Dictionary<TKey, List<int>>();

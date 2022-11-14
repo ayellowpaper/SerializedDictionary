@@ -80,7 +80,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             {
                 public bool IsValid => BackingList != null;
                 public IList BackingList;
-                public ILookupTable LookupTable;
+                public IKeyable LookupTable;
 
                 public void Invalidate()
                 {
@@ -252,10 +252,10 @@ namespace AYellowpaper.SerializedCollections.Editor
                 }
             }
 
-            private ILookupTable GetLookupTable(object dictionary)
+            private IKeyable GetLookupTable(object dictionary)
             {
                 var propInfo = dictionary.GetType().GetProperty(LookupTableName, BindingFlags.Instance | BindingFlags.NonPublic);
-                return (ILookupTable)propInfo.GetValue(dictionary);
+                return (IKeyable)propInfo.GetValue(dictionary);
             }
 
             private IList GetBackingList(object dictionary)
@@ -475,7 +475,6 @@ namespace AYellowpaper.SerializedCollections.Editor
             {
                 var array = populator.GetElements(_keyFieldInfo.FieldType).OfType<object>().ToArray();
                 EditorApplication.delayCall += () => ApplyPopulator(array, modificationType);
-                //QueueAction(() => ApplyPopulator(array, modificationType));
             }
 
             private void ApplyPopulator(IEnumerable<object> elements, ModificationType modificationType)
@@ -484,7 +483,6 @@ namespace AYellowpaper.SerializedCollections.Editor
 
                 foreach (var targetObject in ListProperty.serializedObject.targetObjects)
                 {
-                    Debug.Log("going in");
                     Undo.RecordObject(targetObject, "Populate");
                     var dictionary = SCEditorUtility.GetParent(ListProperty, targetObject);
                     var lookupTable = GetLookupTable(dictionary);
@@ -498,7 +496,6 @@ namespace AYellowpaper.SerializedCollections.Editor
                             if (occurences.Count > 0)
                                 continue;
                             _keyFieldInfo.SetValue(entry, key);
-                            Debug.Log("adding");
                             list.Add(entry);
                         }
                     }
@@ -506,7 +503,6 @@ namespace AYellowpaper.SerializedCollections.Editor
                     {
                         foreach (var existingKey in lookupTable.Keys)
                         {
-                            Debug.Log("removing");
                             list.Remove(existingKey);
                         }
                     }
@@ -520,13 +516,11 @@ namespace AYellowpaper.SerializedCollections.Editor
                             list.Remove(keyToRemove);
                     }
 
-
-                    // TODO: This is only done because OnAfterDeserialize doesn't fire. Not really obvious why this has to be called manually here
-                    lookupTable.RecalculateOccurences();
                     PrefabUtility.RecordPrefabInstancePropertyModifications(targetObject);
                 }
 
                 ListProperty.serializedObject.Update();
+                ActiveEditorTracker.sharedTracker.ForceRebuild();
             }
 
             private void RemoveConflicts()
@@ -552,8 +546,6 @@ namespace AYellowpaper.SerializedCollections.Editor
                         list.RemoveAt(indexToRemove);
                     }
 
-                    // TODO: This is only done because OnAfterDeserialize doesn't fire. Not really obvious why this has to be called manually here
-                    lookupTable.RecalculateOccurences();
                     PrefabUtility.RecordPrefabInstancePropertyModifications(targetObject);
                 }
             }

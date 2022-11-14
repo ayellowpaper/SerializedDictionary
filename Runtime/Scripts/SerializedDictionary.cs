@@ -11,7 +11,7 @@ namespace AYellowpaper.SerializedCollections
         internal List<SerializedKeyValuePair<TKey, TValue>> _serializedList = new List<SerializedKeyValuePair<TKey, TValue>>();
 
 #if UNITY_EDITOR
-        internal ILookupTable LookupTable
+        internal IKeyable LookupTable
         {
             get
             {
