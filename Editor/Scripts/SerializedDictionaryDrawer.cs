@@ -246,7 +246,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                     _singleEditing.Invalidate();
                 else if (!ListProperty.serializedObject.isEditingMultipleObjects && !_singleEditing.IsValid)
                 {
-                    var dictionary = SCEditorUtility.GetParent(ListProperty);
+                    var dictionary = SCEditorUtility.GetParent(ListProperty, ListProperty.serializedObject.targetObject);
                     _singleEditing.BackingList = GetBackingList(dictionary);
                     _singleEditing.LookupTable = GetLookupTable(dictionary);
                 }
@@ -473,18 +473,20 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             private void ApplyPopulatorQueued(KeysGenerator populator, ModificationType modificationType)
             {
-                QueueAction(() => ApplyPopulator(populator, modificationType));
+                var array = populator.GetElements(_keyFieldInfo.FieldType).OfType<object>().ToArray();
+                EditorApplication.delayCall += () => ApplyPopulator(array, modificationType);
+                //QueueAction(() => ApplyPopulator(array, modificationType));
             }
 
-            private void ApplyPopulator(KeysGenerator populator, ModificationType modificationType)
+            private void ApplyPopulator(IEnumerable<object> elements, ModificationType modificationType)
             {
-                var elements = populator.GetElements(_keyFieldInfo.FieldType);
                 object entry = Activator.CreateInstance(_entryType);
 
                 foreach (var targetObject in ListProperty.serializedObject.targetObjects)
                 {
+                    Debug.Log("going in");
                     Undo.RecordObject(targetObject, "Populate");
-                    var dictionary = SCEditorUtility.GetParent(ListProperty);
+                    var dictionary = SCEditorUtility.GetParent(ListProperty, targetObject);
                     var lookupTable = GetLookupTable(dictionary);
                     var list = GetBackingList(dictionary);
 
@@ -532,7 +534,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 foreach (var targetObject in ListProperty.serializedObject.targetObjects)
                 {
                     Undo.RecordObject(targetObject, "Populate");
-                    var dictionary = SCEditorUtility.GetParent(ListProperty);
+                    var dictionary = SCEditorUtility.GetParent(ListProperty, targetObject);
                     var lookupTable = GetLookupTable(dictionary);
                     var list = GetBackingList(dictionary);
 

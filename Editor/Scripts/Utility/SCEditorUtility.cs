@@ -138,10 +138,9 @@ namespace AYellowpaper.SerializedCollections.Editor
 
 
 
-        public static object GetParent(SerializedProperty prop)
+        public static object GetParent(SerializedProperty prop, object target)
         {
             var path = prop.propertyPath.Replace(".Array.data[", "[");
-            object obj = prop.serializedObject.targetObject;
             var elements = path.Split('.');
             foreach (var element in elements.Take(elements.Length - 1))
             {
@@ -149,14 +148,14 @@ namespace AYellowpaper.SerializedCollections.Editor
                 {
                     var elementName = element.Substring(0, element.IndexOf("["));
                     var index = Convert.ToInt32(element.Substring(element.IndexOf("[")).Replace("[", "").Replace("]", ""));
-                    obj = GetValue(obj, elementName, index);
+                    target = GetValue(target, elementName, index);
                 }
                 else
                 {
-                    obj = GetValue(obj, element);
+                    target = GetValue(target, element);
                 }
             }
-            return obj;
+            return target;
         }
 
         public static object GetValue(object source, string name)

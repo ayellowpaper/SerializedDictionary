@@ -17,8 +17,9 @@ namespace AYellowpaper.SerializedCollections.Populators
         {
             int dir = Math.Sign(_endValue - _startValue);
             dir = dir == 0 ? 1 : dir;
-            for (int i = _startValue; i <= _endValue; i += dir)
+            for (int i = _startValue; i != _endValue; i += dir)
                 yield return i;
+            yield return _endValue;
         }
     }
 }

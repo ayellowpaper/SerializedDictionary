@@ -57,9 +57,8 @@ namespace AYellowpaper.SerializedCollections.Populators
             EditorGUILayout.LabelField($"Result Count: 10 (3 Added, 2 Removed)");
             if (GUILayout.Button("Apply"))
             {
-                OnApply?.Invoke(_editor.target as KeysGenerator, _modificationType);
-                OnApply = null;
-                Close();
+                EditorApplication.delayCall += Apply;
+
             }
             EditorGUILayout.EndHorizontal();
 
@@ -85,13 +84,19 @@ namespace AYellowpaper.SerializedCollections.Populators
             _detailsText = $"{count} Elements";
         }
 
-        private void OnDisable()
+        private void Apply()
         {
+            OnApply?.Invoke(_editor.target as KeysGenerator, _modificationType);
+            OnApply = null;
+            Close();
+        }
+
+        private void OnDestroy()
+        {
+            Undo.undoRedoPerformed -= HandleUndoCallback;
             Undo.RevertAllDownToGroup(_undoStart);
-            foreach (var test in _keysGenerators)
-            {
-                DestroyImmediate(test.Value);
-            }
+            foreach (var keyGenerator in _keysGenerators)
+                DestroyImmediate(keyGenerator.Value);
         }
 
         private void DoModificationToggles()
@@ -169,6 +174,7 @@ namespace AYellowpaper.SerializedCollections.Populators
             if (!_keysGenerators.ContainsKey(type))
             {
                 var so = (KeysGenerator) CreateInstance(type);
+                so.hideFlags = HideFlags.DontSave;
                 _keysGenerators.Add(type, so);
             }
             return _keysGenerators[type];
