@@ -49,18 +49,8 @@ namespace AYellowpaper.SerializedCollections
         {
 #if UNITY_EDITOR
             if (UnityEditor.BuildPipeline.isBuildingPlayer)
-                RemoveDuplicates();
+                LookupTable.RemoveDuplicates();
 #endif
         }
-
-#if UNITY_EDITOR
-        private void RemoveDuplicates()
-        {
-            _serializedList = _serializedList
-                .GroupBy(x => x.Key)
-                .Where(x => SerializedCollectionsUtility.IsValidKey(x.Key))
-                .Select(x => x.First()).ToList();
-        }
-#endif
     }
 }

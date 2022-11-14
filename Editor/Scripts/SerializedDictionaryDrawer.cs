@@ -479,48 +479,54 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             private void ApplyPopulator(IEnumerable<object> elements, ModificationType modificationType)
             {
-                object entry = Activator.CreateInstance(_entryType);
-
                 foreach (var targetObject in ListProperty.serializedObject.targetObjects)
                 {
                     Undo.RecordObject(targetObject, "Populate");
                     var dictionary = SCEditorUtility.GetParent(ListProperty, targetObject);
                     var lookupTable = GetLookupTable(dictionary);
-                    var list = GetBackingList(dictionary);
 
                     if (modificationType == ModificationType.Add)
-                    {
-                        foreach (var key in elements)
-                        {
-                            var occurences = lookupTable.GetOccurences(key);
-                            if (occurences.Count > 0)
-                                continue;
-                            _keyFieldInfo.SetValue(entry, key);
-                            list.Add(entry);
-                        }
-                    }
+                        AddElements(lookupTable, elements);
                     else if (modificationType == ModificationType.Remove)
-                    {
-                        foreach (var existingKey in lookupTable.Keys)
-                        {
-                            list.Remove(existingKey);
-                        }
-                    }
+                        RemoveElements(lookupTable, elements);
                     else if (modificationType == ModificationType.Confine)
-                    {
-                        var keysToRemove = lookupTable.Keys.OfType<object>().ToHashSet();
-                        foreach (var key in elements)
-                            keysToRemove.Remove(key);
+                        ConfineElements(lookupTable, elements);
 
-                        foreach (var keyToRemove in keysToRemove)
-                            list.Remove(keyToRemove);
-                    }
-
+                    lookupTable.RecalculateOccurences();
                     PrefabUtility.RecordPrefabInstancePropertyModifications(targetObject);
                 }
 
                 ListProperty.serializedObject.Update();
                 ActiveEditorTracker.sharedTracker.ForceRebuild();
+            }
+
+            private static void AddElements(IKeyable lookupTable, IEnumerable<object> elements)
+            {
+                foreach (var key in elements)
+                {
+                    var occurences = lookupTable.GetOccurences(key);
+                    if (occurences.Count > 0)
+                        continue;
+                    lookupTable.AddKey(key);
+                }
+            }
+
+            private static void ConfineElements(IKeyable lookupTable, IEnumerable<object> elements)
+            {
+                var keysToRemove = lookupTable.Keys.OfType<object>().ToHashSet();
+                foreach (var key in elements)
+                    keysToRemove.Remove(key);
+
+                RemoveElements(lookupTable, keysToRemove);
+            }
+
+            private static void RemoveElements(IKeyable lookupTable, IEnumerable<object> elements)
+            {
+                var indicesToRemove = elements.SelectMany(x => lookupTable.GetOccurences(x)).OrderByDescending(index => index);
+                foreach (var index in indicesToRemove)
+                {
+                    lookupTable.RemoveAt(index);
+                }
             }
 
             private void RemoveConflicts()

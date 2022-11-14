@@ -9,5 +9,10 @@ namespace AYellowpaper.SerializedCollections
         void RecalculateOccurences();
         IReadOnlyList<int> GetOccurences(object key);
         IEnumerable Keys { get; }
+
+        void AddKey(object key);
+        void RemoveKey(object key);
+        void RemoveAt(int index);
+        void RemoveDuplicates();
     }
 }
