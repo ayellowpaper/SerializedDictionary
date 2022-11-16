@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using System.Linq;
+using UnityEngine.UIElements;
 
 namespace AYellowpaper.SerializedCollections.Populators
 {
@@ -25,46 +25,79 @@ namespace AYellowpaper.SerializedCollections.Populators
 
         public event Action<KeysGenerator, ModificationType> OnApply;
 
-        private void OnGUI()
+        private void OnEnable()
         {
-            Rect rect = position.WithPosition(Vector2.zero);
+            VisualTreeAsset document = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Plugins/SerializedCollections/Editor/Assets/KeysGeneratorSelectorWindow.uxml");
+            var element = document.CloneTree();
+            element.style.height = new StyleLength(new Length(100, LengthUnit.Percent));
+            rootVisualElement.Add(element);
+        }
 
-            DrawBorders(rect);
-            EditorGUILayout.BeginHorizontal(GUILayout.ExpandHeight(true));
+        public void Initialize(IEnumerable<KeysGeneratorData> generatorsData)
+        {
+            _selectedIndex = 0;
+            _modificationType = ModificationType.Add;
+            _undoStart = Undo.GetCurrentGroup();
+            _generatorsData = new List<KeysGeneratorData>(generatorsData);
+            SetGeneratorIndex(0);
+            Undo.undoRedoPerformed += HandleUndoCallback;
 
-            EditorGUILayout.BeginVertical(EditorStyles.toolbar, GUILayout.Width(100), GUILayout.ExpandHeight(true));
-            DoGeneratorsToggles();
-            EditorGUILayout.EndVertical();
+            rootVisualElement.Q<RadioButton>(name = "add-modification").userData = ModificationType.Add;
+            rootVisualElement.Q<RadioButton>(name = "remove-modification").userData = ModificationType.Remove;
+            rootVisualElement.Q<RadioButton>(name = "confine-modification").userData = ModificationType.Confine;
 
-            EditorGUILayout.BeginVertical();
+            var modificationToggles = rootVisualElement.Query<RadioButton>(className: "sc-modification-toggle");
+            modificationToggles.ForEach(InitializeModificationToggle);
 
-            EditorGUILayout.BeginScrollView(Vector2.zero, GUILayout.ExpandHeight(true));
-            _editor.serializedObject.UpdateIfRequiredOrScript();
-            EditorGUI.BeginChangeCheck();
+            rootVisualElement.Q<IMGUIContainer>(name = "imgui-inspector").onGUIHandler = EditorGUIHandler;
+            rootVisualElement.Q<Button>(name = "apply-button").clicked += ApplyButtonClicked;
+
+            var generatorsContent = rootVisualElement.Q<ScrollView>(name = "generators-content");
+            var radioButtonGroup = new RadioButtonGroup();
+            radioButtonGroup.name = "generators-group";
+            radioButtonGroup.AddToClassList("sc-radio-button-group");
+            generatorsContent.Add(radioButtonGroup);
+
+            for (int i = 0; i < _generatorsData.Count; i++)
+            {
+                var generatorData = _generatorsData[i];
+
+                var radioButton = new RadioButton(generatorData.Name);
+                radioButton.value = i == 0;
+                radioButton.AddToClassList("sc-text-toggle");
+                radioButton.AddToClassList("sc-generator-toggle");
+                radioButton.userData = i;
+                radioButton.RegisterValueChangedCallback(OnGeneratorClicked);
+                radioButtonGroup.Add(radioButton);
+            }
+        }
+
+        private void ApplyButtonClicked()
+        {
+            OnApply?.Invoke(_editor.target as KeysGenerator, _modificationType);
+            OnApply = null;
+            Close();
+        }
+
+        private void EditorGUIHandler()
+        {
             _editor.OnInspectorGUI();
-            if (EditorGUI.EndChangeCheck())
-            {
-                UpdateDetailsText();
-            }
-            EditorGUILayout.EndScrollView();
-            EditorGUILayout.LabelField(_detailsText);
+        }
 
-            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-            DoModificationToggles();
-            EditorGUILayout.EndHorizontal();
+        private void InitializeModificationToggle(RadioButton obj)
+        {
+            if ((ModificationType)obj.userData == _modificationType)
+                obj.value = true;
+            obj.RegisterValueChangedCallback(OnModificationToggleClicked);
+        }
 
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField($"Result Count: 10 (3 Added, 2 Removed)");
-            if (GUILayout.Button("Apply"))
-            {
-                EditorApplication.delayCall += Apply;
+        private void OnModificationToggleClicked(ChangeEvent<bool> evt)
+        {
+            if (!evt.newValue)
+                return;
 
-            }
-            EditorGUILayout.EndHorizontal();
-
-            EditorGUILayout.EndVertical();
-
-            EditorGUILayout.EndHorizontal();
+            var modificationType = (ModificationType) ((VisualElement)evt.target).userData;
+            _modificationType = modificationType;
         }
 
         private void UpdateDetailsText()
@@ -84,13 +117,6 @@ namespace AYellowpaper.SerializedCollections.Populators
             _detailsText = $"{count} Elements";
         }
 
-        private void Apply()
-        {
-            OnApply?.Invoke(_editor.target as KeysGenerator, _modificationType);
-            OnApply = null;
-            Close();
-        }
-
         private void OnDestroy()
         {
             Undo.undoRedoPerformed -= HandleUndoCallback;
@@ -99,47 +125,12 @@ namespace AYellowpaper.SerializedCollections.Populators
                 DestroyImmediate(keyGenerator.Value);
         }
 
-        private void DoModificationToggles()
+        private void OnGeneratorClicked(ChangeEvent<bool> evt)
         {
-            DoModificationToggle(EditorGUIUtility.TrTextContent("Add", "Add the generated missing keys to the target."), ModificationType.Add);
-            DoModificationToggle(EditorGUIUtility.TrTextContent("Remove", "Remove the generated keys form the target."), ModificationType.Remove);
-            DoModificationToggle(EditorGUIUtility.TrTextContent("Confine", "Remove all keys that are not part of the generated keys from the target."), ModificationType.Confine);
-        }
+            if (!evt.newValue)
+                return;
 
-        private void DoGeneratorsToggles()
-        {
-            for (int i = 0; i < _generatorsData.Count; i++)
-            {
-                var generatorData = _generatorsData[i];
-                EditorGUI.BeginChangeCheck();
-                GUILayout.Toggle(i == _selectedIndex, generatorData.Name, EditorStyles.toolbarButton);
-                if (EditorGUI.EndChangeCheck())
-                    SetGeneratorIndex(i);
-            }
-        }
-
-        private void DoModificationToggle(GUIContent content, ModificationType modificationType)
-        {
-            if (GUILayout.Toggle(modificationType == _modificationType, content, EditorStyles.toolbarButton))
-                _modificationType = modificationType;
-        }
-
-        private static void DrawBorders(Rect rect)
-        {
-            EditorGUI.DrawRect(rect.AppendLeft(1, -1), BorderColor);
-            EditorGUI.DrawRect(rect.AppendDown(1, -1), BorderColor);
-            EditorGUI.DrawRect(rect.AppendRight(1, -1), BorderColor);
-            EditorGUI.DrawRect(rect.AppendUp(1, -1), BorderColor);
-        }
-
-        public void Initialize(IEnumerable<KeysGeneratorData> generatorsData)
-        {
-            _selectedIndex = 0;
-            _modificationType = ModificationType.Add;
-            _undoStart = Undo.GetCurrentGroup();
-            _generatorsData = new List<KeysGeneratorData>(generatorsData);
-            SetGeneratorIndex(0);
-            Undo.undoRedoPerformed += HandleUndoCallback;
+            SetGeneratorIndex((int) (evt.target as VisualElement).userData);
         }
 
         private void HandleUndoCallback()
@@ -173,7 +164,7 @@ namespace AYellowpaper.SerializedCollections.Populators
         {
             if (!_keysGenerators.ContainsKey(type))
             {
-                var so = (KeysGenerator) CreateInstance(type);
+                var so = (KeysGenerator)CreateInstance(type);
                 so.hideFlags = HideFlags.DontSave;
                 _keysGenerators.Add(type, so);
             }
