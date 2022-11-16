@@ -4,11 +4,9 @@ using UnityEngine;
 
 namespace AYellowpaper.SerializedCollections.Populators
 {
-    [KeysGenerator("Populate Enum", typeof(System.Enum))]
+    [KeysGenerator("Populate Enum", typeof(System.Enum), false)]
     public class EnumGenerator : KeysGenerator
     {
-        public override bool RequiresWindow => false;
-
         public override IEnumerable GetElements(System.Type type)
         {
             return System.Enum.GetValues(type);

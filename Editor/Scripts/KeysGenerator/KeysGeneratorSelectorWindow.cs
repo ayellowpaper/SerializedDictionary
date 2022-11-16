@@ -1,4 +1,3 @@
-using AYellowpaper.SerializedCollections.Editor;
 using System;
 using System.Collections.Generic;
 using UnityEditor;
@@ -19,6 +18,7 @@ namespace AYellowpaper.SerializedCollections.Populators
         private KeysGenerator _generator;
         private UnityEditor.Editor _editor;
         private List<KeysGeneratorData> _generatorsData;
+        private Type _targetType;
         private int _undoStart;
         private Dictionary<Type, KeysGenerator> _keysGenerators = new Dictionary<Type, KeysGenerator>();
         private string _detailsText;
@@ -33,14 +33,17 @@ namespace AYellowpaper.SerializedCollections.Populators
             rootVisualElement.Add(element);
         }
 
-        public void Initialize(IEnumerable<KeysGeneratorData> generatorsData)
+        public void Initialize(IEnumerable<KeysGeneratorData> generatorsData, Type type)
         {
+            _targetType = type;
             _selectedIndex = 0;
             _modificationType = ModificationType.Add;
             _undoStart = Undo.GetCurrentGroup();
             _generatorsData = new List<KeysGeneratorData>(generatorsData);
             SetGeneratorIndex(0);
             Undo.undoRedoPerformed += HandleUndoCallback;
+
+            rootVisualElement.Q<Button>(className: "sc-close-button").clicked += Close;
 
             rootVisualElement.Q<RadioButton>(name = "add-modification").userData = ModificationType.Add;
             rootVisualElement.Q<RadioButton>(name = "remove-modification").userData = ModificationType.Remove;
@@ -81,7 +84,12 @@ namespace AYellowpaper.SerializedCollections.Populators
 
         private void EditorGUIHandler()
         {
+            EditorGUI.BeginChangeCheck();
             _editor.OnInspectorGUI();
+            if (EditorGUI.EndChangeCheck())
+            {
+                UpdateDetailsText();
+            }
         }
 
         private void InitializeModificationToggle(RadioButton obj)
@@ -96,13 +104,13 @@ namespace AYellowpaper.SerializedCollections.Populators
             if (!evt.newValue)
                 return;
 
-            var modificationType = (ModificationType) ((VisualElement)evt.target).userData;
+            var modificationType = (ModificationType)((VisualElement)evt.target).userData;
             _modificationType = modificationType;
         }
 
         private void UpdateDetailsText()
         {
-            var enumerable = _generator.GetElements(_generatorsData[_selectedIndex].TargetType);
+            var enumerable = _generator.GetElements(_targetType);
             int count = 0;
             var enumerator = enumerable.GetEnumerator();
             while (enumerator.MoveNext())
@@ -115,6 +123,8 @@ namespace AYellowpaper.SerializedCollections.Populators
                 }
             }
             _detailsText = $"{count} Elements";
+
+            rootVisualElement.Q<Label>(name = "generated-count-label").text = _detailsText;
         }
 
         private void OnDestroy()
@@ -130,7 +140,7 @@ namespace AYellowpaper.SerializedCollections.Populators
             if (!evt.newValue)
                 return;
 
-            SetGeneratorIndex((int) (evt.target as VisualElement).userData);
+            SetGeneratorIndex((int)(evt.target as VisualElement).userData);
         }
 
         private void HandleUndoCallback()

@@ -20,9 +20,9 @@ namespace AYellowpaper.SerializedCollections.Populators
             var populatorTypes = TypeCache.GetTypesDerivedFrom<KeysGenerator>();
             foreach (var populatorType in populatorTypes.Where(x => !x.IsAbstract))
             {
-                var attribute = populatorType.GetCustomAttribute<KeysGeneratorAttribute>();
-                if (attribute != null)
-                    _populators.Add(new KeysGeneratorData(attribute.Name, attribute.TargetType, populatorType));
+                var attributes = populatorType.GetCustomAttributes<KeysGeneratorAttribute>();
+                foreach (var attribute in attributes)
+                    _populators.Add(new KeysGeneratorData(attribute.Name, attribute.TargetType, populatorType, attribute.NeedsWindow));
             }
         }
 

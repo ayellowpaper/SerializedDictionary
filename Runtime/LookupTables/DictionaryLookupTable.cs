@@ -11,14 +11,7 @@ namespace AYellowpaper.SerializedCollections
 
         private static readonly List<int> EmptyList = new List<int>();
 
-        public IEnumerable Keys
-        {
-            get
-            {
-                foreach (var entry in _dictionary._serializedList)
-                    yield return entry.Key;
-            }
-        }
+        public IEnumerable Keys => _dictionary.Keys;
 
         public DictionaryLookupTable(SerializedDictionary<TKey, TValue> dictionary)
         {

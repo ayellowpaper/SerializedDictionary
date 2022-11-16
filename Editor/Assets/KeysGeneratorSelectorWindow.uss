@@ -1,3 +1,25 @@
+.sc-close-button {
+    background-image: resource('d_winbtn_win_close@2x');
+    width: 16px;
+    height: 16px;
+    position: absolute;
+    right: 2px;
+    top: 2px;
+    background-color: rgba(0, 0, 0, 0);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.sc-close-button:hover {
+    background-color: rgba(80, 80, 80, 255);
+}
+
+.sc-close-button:active {
+    background-color: rgba(0, 0, 0, 0);
+}
+
 .sc-text-toggle {
     margin: 0;
     padding: 0;

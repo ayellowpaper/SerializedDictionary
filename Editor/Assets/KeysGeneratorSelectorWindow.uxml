@@ -8,6 +8,7 @@
         <ui:VisualElement name="RightContent" style="flex-basis: 100%;">
             <ui:Label text="Inspector" display-tooltip-when-elided="true" class="sc-title" />
             <ui:IMGUIContainer name="imgui-inspector" style="flex-grow: 1; margin-left: 4px; margin-right: 4px; margin-top: 4px; margin-bottom: 4px;" />
+            <ui:Label text="4 Elements " display-tooltip-when-elided="true" name="generated-count-label" style="padding-left: 2px; padding-right: 2px; padding-top: 2px; padding-bottom: 2px;" />
             <ui:VisualElement style="flex-direction: row;">
                 <ui:RadioButtonGroup label="Radio Button Group" value="-1" name="modification-group" class="sc-radio-button-group" style="flex-grow: 1;">
                     <ui:RadioButton label="Add" name="add-modification" tooltip="Add the generated missing keys to the target." class="sc-text-toggle sc-modification-toggle" />
@@ -16,9 +17,10 @@
                 </ui:RadioButtonGroup>
             </ui:VisualElement>
             <ui:VisualElement style="flex-direction: row;">
-                <ui:Label text="Added Count: 4" display-tooltip-when-elided="true" style="flex-grow: 1; -unity-text-align: middle-left;" />
+                <ui:Label text="Added Count: 4" display-tooltip-when-elided="true" name="result-label" style="flex-grow: 1; -unity-text-align: middle-left; padding-left: 2px; padding-right: 2px; padding-top: 2px; padding-bottom: 2px;" />
                 <ui:Button text="Apply" display-tooltip-when-elided="true" name="apply-button" style="width: 100px;" />
             </ui:VisualElement>
         </ui:VisualElement>
+        <ui:Button display-tooltip-when-elided="true" class="sc-close-button" />
     </ui:VisualElement>
 </ui:UXML>
