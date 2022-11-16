@@ -17,7 +17,7 @@
                 </ui:RadioButtonGroup>
             </ui:VisualElement>
             <ui:VisualElement style="flex-direction: row;">
-                <ui:Label text="Added Count: 4" display-tooltip-when-elided="true" name="result-label" style="flex-grow: 1; -unity-text-align: middle-left; padding-left: 2px; padding-right: 2px; padding-top: 2px; padding-bottom: 2px;" />
+                <ui:Label display-tooltip-when-elided="true" name="result-label" style="flex-grow: 1; -unity-text-align: middle-left; padding-left: 2px; padding-right: 2px; padding-top: 2px; padding-bottom: 2px;" />
                 <ui:Button text="Apply" display-tooltip-when-elided="true" name="apply-button" style="width: 100px;" />
             </ui:VisualElement>
         </ui:VisualElement>
