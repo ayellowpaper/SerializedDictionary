@@ -11,9 +11,9 @@ namespace AYellowpaper.SerializedCollections.Editor.States
         public abstract int ListSize { get; }
         public virtual string NoElementsText => "List is Empty.";
 
-        public readonly DictionaryDrawer Drawer;
+        public readonly SerializedDictionaryInstanceDrawer Drawer;
 
-        public ListState(DictionaryDrawer serializedDictionaryDrawer)
+        public ListState(SerializedDictionaryInstanceDrawer serializedDictionaryDrawer)
         {
             Drawer = serializedDictionaryDrawer;
         }
@@ -28,7 +28,7 @@ namespace AYellowpaper.SerializedCollections.Editor.States
 
         public virtual float GetHeightAtIndex(int index, bool drawKeyAsList, bool drawValueAsList)
         {
-            return DictionaryDrawer.CalculateHeightOfElement(GetPropertyAtIndex(index), drawKeyAsList, drawValueAsList);
+            return SerializedDictionaryInstanceDrawer.CalculateHeightOfElement(GetPropertyAtIndex(index), drawKeyAsList, drawValueAsList);
         }
     }
 }

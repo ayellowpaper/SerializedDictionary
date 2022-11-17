@@ -10,7 +10,7 @@ namespace AYellowpaper.SerializedCollections.Editor.States
     {
         public override int ListSize => Drawer.ListProperty.minArraySize;
 
-        public DefaultListState(DictionaryDrawer serializedDictionaryDrawer) : base(serializedDictionaryDrawer)
+        public DefaultListState(SerializedDictionaryInstanceDrawer serializedDictionaryDrawer) : base(serializedDictionaryDrawer)
         {
         }
 
@@ -33,7 +33,7 @@ namespace AYellowpaper.SerializedCollections.Editor.States
 
         public override void DrawElement(Rect rect, SerializedProperty property, DisplayType displayType)
         {
-            DictionaryDrawer.DrawElement(rect, property, displayType);
+            SerializedDictionaryInstanceDrawer.DrawElement(rect, property, displayType);
         }
 
         public override SerializedProperty GetPropertyAtIndex(int index)
@@ -44,9 +44,6 @@ namespace AYellowpaper.SerializedCollections.Editor.States
         public override void RemoveElementAt(int index)
         {
             Drawer.ListProperty.DeleteArrayElementAtIndex(index);
-            //UpdatePaging();
-            //if (actualIndex >= ListProperty.minArraySize)
-            //    list.index = _pagedIndices.Count - 1;
         }
 
         public override void InserElementAt(int index)

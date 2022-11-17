@@ -20,13 +20,13 @@ namespace AYellowpaper.SerializedCollections.Editor.States
         private HashSet<string> _foundProperties;
         private Color _previousColor;
 
-        public SearchListState(DictionaryDrawer serializedDictionaryDrawer) : base(serializedDictionaryDrawer)
+        public SearchListState(SerializedDictionaryInstanceDrawer serializedDictionaryDrawer) : base(serializedDictionaryDrawer)
         {
         }
 
         public override void DrawElement(Rect rect, SerializedProperty property, DisplayType displayType)
         {
-            DictionaryDrawer.DrawElement(rect, property, displayType, BeforeDrawingProperty, AfterDrawingProperty);
+            SerializedDictionaryInstanceDrawer.DrawElement(rect, property, displayType, BeforeDrawingProperty, AfterDrawingProperty);
         }
 
         private void BeforeDrawingProperty(SerializedProperty obj)
