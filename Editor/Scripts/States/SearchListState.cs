@@ -46,6 +46,7 @@ namespace AYellowpaper.SerializedCollections.Editor.States
         public override void OnEnter()
         {
             Drawer.ReorderableList.draggable = false;
+            UpdateSearch();
         }
 
         public override void OnExit()
@@ -57,13 +58,18 @@ namespace AYellowpaper.SerializedCollections.Editor.States
             if (Drawer.SearchText.Length == 0)
                 return Drawer.DefaultState;
 
+            UpdateSearch();
+
+            return this;
+        }
+
+        private void UpdateSearch()
+        {
             if (_lastSearch != Drawer.SearchText)
             {
                 _lastSearch = Drawer.SearchText;
                 PerformSearch(Drawer.SearchText);
             }
-
-            return this;
         }
 
         public void PerformSearch(string searchString)

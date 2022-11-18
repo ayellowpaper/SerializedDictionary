@@ -19,8 +19,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         private bool _initialized = false;
         internal ReorderableList ReorderableList { get; private set; }
         private ReorderableList _unexpandedList;
-        private SingleEditingData _singleEditing;
-        private Type _entryType;
+        private SingleEditingData _singleEditingData;
         private FieldInfo _keyFieldInfo;
         private GUIContent _label;
         private Rect _totalRect;
@@ -33,7 +32,6 @@ namespace AYellowpaper.SerializedCollections.Editor
         private int _lastListSize = -1;
         private IReadOnlyList<KeysGeneratorData> _keyGeneratorsWithoutWindow;
         private IReadOnlyList<KeysGeneratorData> _keyGeneratorsWithWindow;
-        private Action _queuedAction;
         private SearchField _searchField;
         private GUIContent _shortDetailsContent;
         private GUIContent _detailsContent;
@@ -47,13 +45,11 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private class SingleEditingData
         {
-            public bool IsValid => BackingList != null;
-            public IList BackingList;
+            public bool IsValid => LookupTable != null;
             public IKeyable LookupTable;
 
             public void Invalidate()
             {
-                BackingList = null;
                 LookupTable = null;
             }
         }
@@ -76,8 +72,6 @@ namespace AYellowpaper.SerializedCollections.Editor
             {
                 property.serializedObject.ApplyModifiedProperties();
             }
-            ProcessState();
-            ProcessQueuedAction();
         }
 
         private void DoList(Rect position)
@@ -101,15 +95,6 @@ namespace AYellowpaper.SerializedCollections.Editor
                 _activeState.OnExit();
                 _activeState = newState;
                 newState.OnEnter();
-            }
-        }
-
-        private void ProcessQueuedAction()
-        {
-            if (_queuedAction != null)
-            {
-                _queuedAction();
-                _queuedAction = null;
             }
         }
 
@@ -167,10 +152,10 @@ namespace AYellowpaper.SerializedCollections.Editor
                 _searchField = new SearchField();
 
                 var listField = _fieldInfo.FieldType.GetField(SerializedDictionaryDrawer.SerializedListName, BindingFlags.Instance | BindingFlags.NonPublic);
-                _entryType = listField.FieldType.GetGenericArguments()[0];
-                _keyFieldInfo = _entryType.GetField(SerializedDictionaryDrawer.KeyName);
+                var entryType = listField.FieldType.GetGenericArguments()[0];
+                _keyFieldInfo = entryType.GetField(SerializedDictionaryDrawer.KeyName);
 
-                _singleEditing = new SingleEditingData();
+                _singleEditingData = new SingleEditingData();
 
                 var keyGenerators = KeysGeneratorCache.GetPopulatorsForType(_keyFieldInfo.FieldType);
                 _keyGeneratorsWithWindow = keyGenerators.Where(x => x.NeedsWindow).ToList();
@@ -213,13 +198,12 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void UpdateSingleEditing()
         {
-            if (ListProperty.serializedObject.isEditingMultipleObjects && _singleEditing.IsValid)
-                _singleEditing.Invalidate();
-            else if (!ListProperty.serializedObject.isEditingMultipleObjects && !_singleEditing.IsValid)
+            if (ListProperty.serializedObject.isEditingMultipleObjects && _singleEditingData.IsValid)
+                _singleEditingData.Invalidate();
+            else if (!ListProperty.serializedObject.isEditingMultipleObjects && !_singleEditingData.IsValid)
             {
-                var dictionary = SCEditorUtility.GetParent(ListProperty, ListProperty.serializedObject.targetObject);
-                _singleEditing.BackingList = GetBackingList(dictionary);
-                _singleEditing.LookupTable = GetLookupTable(dictionary);
+                var dictionary = SCEditorUtility.GetPropertyValue(ListProperty, ListProperty.serializedObject.targetObject);
+                _singleEditingData.LookupTable = GetLookupTable(dictionary);
             }
         }
 
@@ -227,12 +211,6 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             var propInfo = dictionary.GetType().GetProperty(SerializedDictionaryDrawer.LookupTableName, BindingFlags.Instance | BindingFlags.NonPublic);
             return (IKeyable)propInfo.GetValue(dictionary);
-        }
-
-        private IList GetBackingList(object dictionary)
-        {
-            var listField = _fieldInfo.FieldType.GetField(SerializedDictionaryDrawer.SerializedListName, BindingFlags.Instance | BindingFlags.NonPublic);
-            return (IList)listField.GetValue(dictionary);
         }
 
         private void UpdatePaging()
@@ -342,6 +320,8 @@ namespace AYellowpaper.SerializedCollections.Editor
                 DoSearch(adjustedTopRect);
             }
             DoKeyValueRect(adjustedTopRect.AppendDown(SerializedDictionaryDrawer.KeyValueHeaderHeight));
+
+            ProcessState();
         }
 
         private void DoMainHeader(Rect rect)
@@ -362,7 +342,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             lastTopRect = lastTopRect.AppendLeft(detailsStyle.CalcSize(_detailsContent).x, 5);
             GUI.Label(lastTopRect, _detailsContent, detailsStyle);
 
-            if (!_singleEditing.IsValid)
+            if (!_singleEditingData.IsValid)
             {
                 lastTopRect = lastTopRect.AppendLeft(lastTopRect.height + 5);
                 var guicontent = EditorGUIUtility.TrIconContent(EditorGUIUtility.Load("d_console.infoicon") as Texture, "Conflict checking, duplicate key removal and populators not supported in multi object editing mode.");
@@ -380,15 +360,15 @@ namespace AYellowpaper.SerializedCollections.Editor
             if (GUI.Button(rect, EditorGUIUtility.IconContent("pane options@2x"), EditorStyles.iconButton))
             {
                 var gm = new GenericMenu();
-                SCEditorUtility.AddGenericMenuItem(gm, false, true, new GUIContent("Clear"), () => QueueAction(() => ListProperty.ClearArray()));
-                SCEditorUtility.AddGenericMenuItem(gm, false, _singleEditing.IsValid, new GUIContent("Remove Conflicts"), () => QueueAction(RemoveConflicts));
+                SCEditorUtility.AddGenericMenuItem(gm, false, ListProperty.minArraySize > 0, new GUIContent("Clear"), () => QueueAction(ClearList));
+                SCEditorUtility.AddGenericMenuItem(gm, false, true, new GUIContent("Remove Conflicts"), () => QueueAction(RemoveConflicts));
                 SCEditorUtility.AddGenericMenuItem(gm, false, _keyGeneratorsWithWindow.Count > 0, new GUIContent("Bulk Edit..."), () => OpenKeysGeneratorSelectorWindow(screenRect));
                 if (_keyGeneratorsWithoutWindow.Count > 0)
                 {
                     gm.AddSeparator(string.Empty);
                     foreach (var generatorData in _keyGeneratorsWithoutWindow)
                     {
-                        SCEditorUtility.AddGenericMenuItem(gm, false, _singleEditing.IsValid, new GUIContent(generatorData.Name), OnPopulatorDataSelected, generatorData);
+                        SCEditorUtility.AddGenericMenuItem(gm, false, true, new GUIContent(generatorData.Name), OnPopulatorDataSelected, generatorData);
                     }
                 }
                 gm.AddSeparator(string.Empty);
@@ -450,15 +430,15 @@ namespace AYellowpaper.SerializedCollections.Editor
             SearchText = _searchField.OnToolbarGUI(rect.CutTop(2).CutHorizontal(6), SearchText);
         }
 
-        private void QueueAction(Action action)
-        {
-            _queuedAction = action;
-        }
-
         private void ApplyPopulatorQueued(KeysGenerator populator, ModificationType modificationType)
         {
             var array = populator.GetElements(_keyFieldInfo.FieldType).OfType<object>().ToArray();
-            EditorApplication.delayCall += () => ApplyPopulator(array, modificationType);
+            QueueAction(() => ApplyPopulator(array, modificationType));
+        }
+
+        private void QueueAction(EditorApplication.CallbackFunction action)
+        {
+            EditorApplication.delayCall += action;
         }
 
         private void ApplyPopulator(IEnumerable<object> elements, ModificationType modificationType)
@@ -466,7 +446,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             foreach (var targetObject in ListProperty.serializedObject.targetObjects)
             {
                 Undo.RecordObject(targetObject, "Populate");
-                var dictionary = SCEditorUtility.GetParent(ListProperty, targetObject);
+                var dictionary = SCEditorUtility.GetPropertyValue(ListProperty, targetObject);
                 var lookupTable = GetLookupTable(dictionary);
 
                 if (modificationType == ModificationType.Add)
@@ -513,14 +493,19 @@ namespace AYellowpaper.SerializedCollections.Editor
             }
         }
 
+        private void ClearList()
+        {
+            ListProperty.ClearArray();
+            ListProperty.serializedObject.ApplyModifiedProperties();
+        }
+
         private void RemoveConflicts()
         {
             foreach (var targetObject in ListProperty.serializedObject.targetObjects)
             {
-                Undo.RecordObject(targetObject, "Populate");
-                var dictionary = SCEditorUtility.GetParent(ListProperty, targetObject);
+                Undo.RecordObject(targetObject, "Remove Conflicts");
+                var dictionary = SCEditorUtility.GetPropertyValue(ListProperty, targetObject);
                 var lookupTable = GetLookupTable(dictionary);
-                var list = GetBackingList(dictionary);
 
                 List<int> duplicateIndices = new List<int>();
 
@@ -533,11 +518,15 @@ namespace AYellowpaper.SerializedCollections.Editor
 
                 foreach (var indexToRemove in duplicateIndices.OrderByDescending(x => x))
                 {
-                    list.RemoveAt(indexToRemove);
+                    lookupTable.RemoveAt(indexToRemove);
                 }
 
+                lookupTable.RecalculateOccurences();
                 PrefabUtility.RecordPrefabInstancePropertyModifications(targetObject);
             }
+
+            ListProperty.serializedObject.Update();
+            ActiveEditorTracker.sharedTracker.ForceRebuild();
         }
 
         private void DoDisplayTypeToggle(Rect contentRect, bool fieldFlag)
@@ -584,10 +573,10 @@ namespace AYellowpaper.SerializedCollections.Editor
             var valueProperty = kvp.FindPropertyRelative(SerializedDictionaryDrawer.ValueName);
 
             Color prevColor = GUI.color;
-            if (_singleEditing.IsValid)
+            if (_singleEditingData.IsValid)
             {
-                var keyObject = _keyFieldInfo.GetValue(_singleEditing.BackingList[actualIndex]);
-                var occurences = _singleEditing.LookupTable.GetOccurences(keyObject);
+                var keyObject = _keyFieldInfo.GetValue(_singleEditingData.LookupTable.GetKeyAt(actualIndex));
+                var occurences = _singleEditingData.LookupTable.GetOccurences(keyObject);
                 if (occurences.Count > 1)
                 {
                     GUI.color = occurences[0] == actualIndex ? Color.yellow : Color.red;

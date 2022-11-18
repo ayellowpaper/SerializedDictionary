@@ -138,7 +138,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
 
 
-        public static object GetParent(SerializedProperty prop, object target)
+        public static object GetPropertyValue(SerializedProperty prop, object target)
         {
             var path = prop.propertyPath.Replace(".Array.data[", "[");
             var elements = path.Split('.');

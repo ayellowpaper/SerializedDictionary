@@ -13,6 +13,7 @@ namespace AYellowpaper.SerializedCollections
         void AddKey(object key);
         void RemoveKey(object key);
         void RemoveAt(int index);
+        object GetKeyAt(int index);
         void RemoveDuplicates();
     }
 }

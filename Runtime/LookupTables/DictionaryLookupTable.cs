@@ -59,6 +59,11 @@ namespace AYellowpaper.SerializedCollections
             _dictionary._serializedList.RemoveAt(index);
         }
 
+        public object GetKeyAt(int index)
+        {
+            return _dictionary._serializedList[index];
+        }
+
         public void RemoveDuplicates()
         {
             _dictionary._serializedList = _dictionary._serializedList
