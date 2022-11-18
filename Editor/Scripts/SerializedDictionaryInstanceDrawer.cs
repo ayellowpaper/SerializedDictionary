@@ -16,8 +16,6 @@ namespace AYellowpaper.SerializedCollections.Editor
     public class SerializedDictionaryInstanceDrawer
     {
         private FieldInfo _fieldInfo;
-        private bool _initialized = false;
-        internal ReorderableList ReorderableList { get; private set; }
         private ReorderableList _unexpandedList;
         private SingleEditingData _singleEditingData;
         private FieldInfo _keyFieldInfo;
@@ -38,6 +36,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         private bool _showSearchBar = false;
         private ListState _activeState;
 
+        internal ReorderableList ReorderableList { get; private set; }
         internal SerializedProperty ListProperty { get; private set; }
         internal string SearchText { get; private set; } = string.Empty;
         internal SearchListState SearchState { get; private set; }
@@ -54,15 +53,50 @@ namespace AYellowpaper.SerializedCollections.Editor
             }
         }
 
-        public SerializedDictionaryInstanceDrawer(FieldInfo fieldInfo)
+        public SerializedDictionaryInstanceDrawer(SerializedProperty property, FieldInfo fieldInfo)
         {
             _fieldInfo = fieldInfo;
+            ListProperty = property.FindPropertyRelative(SerializedDictionaryDrawer.SerializedListName);
+
+            _keyValueStyle = new GUIStyle(EditorStyles.toolbarButton);
+            _keyValueStyle.padding = new RectOffset(0, 0, 0, 0);
+            _keyValueStyle.border = new RectOffset(0, 0, 0, 0);
+            _keyValueStyle.alignment = TextAnchor.MiddleCenter;
+
+            DefaultState = new DefaultListState(this);
+            SearchState = new SearchListState(this);
+            _activeState = DefaultState;
+
+            _dictionaryAttribute = _fieldInfo.GetCustomAttribute<SerializedDictionaryAttribute>();
+
+            _propertyData = SCEditorUtility.GetPropertyData(ListProperty);
+            _propertyData.GetElementData(SCEditorUtility.KeyFlag).Settings.DisplayName = _dictionaryAttribute?.KeyName ?? "Key";
+            _propertyData.GetElementData(SCEditorUtility.ValueFlag).Settings.DisplayName = _dictionaryAttribute?.ValueName ?? "Value";
+            SavePropertyData();
+
+            _pagingElement = new PagingElement();
+            _pagedIndices = new List<int>();
+            UpdatePaging();
+
+            ReorderableList = MakeList();
+            _unexpandedList = MakeUnexpandedList();
+            _searchField = new SearchField();
+
+            var listField = _fieldInfo.FieldType.GetField(SerializedDictionaryDrawer.SerializedListName, BindingFlags.Instance | BindingFlags.NonPublic);
+            var entryType = listField.FieldType.GetGenericArguments()[0];
+            _keyFieldInfo = entryType.GetField(SerializedDictionaryDrawer.KeyName);
+
+            _singleEditingData = new SingleEditingData();
+
+            var keyGenerators = KeysGeneratorCache.GetPopulatorsForType(_keyFieldInfo.FieldType);
+            _keyGeneratorsWithWindow = keyGenerators.Where(x => x.NeedsWindow).ToList();
+            _keyGeneratorsWithoutWindow = keyGenerators.Where(x => !x.NeedsWindow).ToList();
+
+            UpdateAfterInput();
         }
 
-        public void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        public void OnGUI(Rect position, GUIContent label)
         {
-            InitializeIfNeeded(property);
-
             _totalRect = position;
             _label = new GUIContent(label);
 
@@ -70,8 +104,16 @@ namespace AYellowpaper.SerializedCollections.Editor
             DoList(position);
             if (EditorGUI.EndChangeCheck())
             {
-                property.serializedObject.ApplyModifiedProperties();
+                ListProperty.serializedObject.ApplyModifiedProperties();
             }
+        }
+
+        public float GetPropertyHeight(GUIContent label)
+        {
+            if (!ListProperty.isExpanded)
+                return SerializedDictionaryDrawer.TopHeaderClipHeight;
+
+            return ReorderableList.GetHeight();
         }
 
         private void DoList(Rect position)
@@ -98,16 +140,6 @@ namespace AYellowpaper.SerializedCollections.Editor
             }
         }
 
-        public float GetPropertyHeight(SerializedProperty property, GUIContent label)
-        {
-            InitializeIfNeeded(property);
-
-            if (!ListProperty.isExpanded)
-                return SerializedDictionaryDrawer.TopHeaderClipHeight;
-
-            return ReorderableList.GetHeight();
-        }
-
         private SerializedProperty GetElementProperty(SerializedProperty property, bool fieldFlag)
         {
             return property.FindPropertyRelative(fieldFlag == SerializedDictionaryDrawer.KeyFlag ? SerializedDictionaryDrawer.KeyName : SerializedDictionaryDrawer.ValueName);
@@ -120,48 +152,16 @@ namespace AYellowpaper.SerializedCollections.Editor
             return Mathf.Max(SCEditorUtility.CalculateHeight(keyProperty, drawKeyAsList), SCEditorUtility.CalculateHeight(valueProperty, drawValueAsList));
         }
 
-        private void InitializeIfNeeded(SerializedProperty property)
+        private void UpdateAfterInput()
         {
-            ListProperty = property.FindPropertyRelative(SerializedDictionaryDrawer.SerializedListName);
+            InitializeSettingsIfNeeded();
+            ProcessState();
+            CheckPaging();
+            ToggleSearchBar(_propertyData.AlwaysShowSearch ? true : SCEditorUtility.ShouldShowSearch(_pagingElement.PageCount));
+        }
 
-            if (!_initialized)
-            {
-                _initialized = true;
-                _keyValueStyle = new GUIStyle(EditorStyles.toolbarButton);
-                _keyValueStyle.padding = new RectOffset(0, 0, 0, 0);
-                _keyValueStyle.border = new RectOffset(0, 0, 0, 0);
-                _keyValueStyle.alignment = TextAnchor.MiddleCenter;
-
-                DefaultState = new DefaultListState(this);
-                SearchState = new SearchListState(this);
-                _activeState = DefaultState;
-
-                _dictionaryAttribute = _fieldInfo.GetCustomAttribute<SerializedDictionaryAttribute>();
-
-                _propertyData = SCEditorUtility.GetPropertyData(ListProperty);
-                _propertyData.GetElementData(SCEditorUtility.KeyFlag).Settings.DisplayName = _dictionaryAttribute?.KeyName ?? "Key";
-                _propertyData.GetElementData(SCEditorUtility.ValueFlag).Settings.DisplayName = _dictionaryAttribute?.ValueName ?? "Value";
-                SavePropertyData();
-
-                _pagingElement = new PagingElement();
-                _pagedIndices = new List<int>();
-                UpdatePaging();
-
-                ReorderableList = MakeList();
-                _unexpandedList = MakeUnexpandedList();
-                _searchField = new SearchField();
-
-                var listField = _fieldInfo.FieldType.GetField(SerializedDictionaryDrawer.SerializedListName, BindingFlags.Instance | BindingFlags.NonPublic);
-                var entryType = listField.FieldType.GetGenericArguments()[0];
-                _keyFieldInfo = entryType.GetField(SerializedDictionaryDrawer.KeyName);
-
-                _singleEditingData = new SingleEditingData();
-
-                var keyGenerators = KeysGeneratorCache.GetPopulatorsForType(_keyFieldInfo.FieldType);
-                _keyGeneratorsWithWindow = keyGenerators.Where(x => x.NeedsWindow).ToList();
-                _keyGeneratorsWithoutWindow = keyGenerators.Where(x => !x.NeedsWindow).ToList();
-            }
-
+        private void InitializeSettingsIfNeeded()
+        {
             void InitializeSettings(bool fieldFlag)
             {
                 var genericArgs = _fieldInfo.FieldType.GetGenericArguments();
@@ -179,7 +179,10 @@ namespace AYellowpaper.SerializedCollections.Editor
                 InitializeSettings(SCEditorUtility.ValueFlag);
                 SavePropertyData();
             }
+        }
 
+        private void CheckPaging()
+        {
             // TODO: Is there a better solution to check for Revert/delete/add?
             if (_lastListSize != _activeState.ListSize)
             {
@@ -187,8 +190,6 @@ namespace AYellowpaper.SerializedCollections.Editor
                 UpdateSingleEditing();
                 UpdatePaging();
             }
-
-            ToggleSearchBar(_propertyData.AlwaysShowSearch ? true : SCEditorUtility.ShouldShowSearch(_pagingElement.PageCount));
         }
 
         private void SavePropertyData()
@@ -243,7 +244,14 @@ namespace AYellowpaper.SerializedCollections.Editor
             list.drawElementCallback += OnDrawElement;
             list.elementHeightCallback += OnGetElementHeight;
             list.drawHeaderCallback += OnDrawHeader;
-            list.drawNoneElementCallback += OnDrawNone;
+            list.drawNoneElementCallback += OnDrawNoneElement;
+            return list;
+        }
+
+        private ReorderableList MakeUnexpandedList()
+        {
+            var list = new ReorderableList(SerializedDictionaryDrawer.NoEntriesList, typeof(int));
+            list.drawHeaderCallback = DrawUnexpandedHeader;
             return list;
         }
 
@@ -259,16 +267,9 @@ namespace AYellowpaper.SerializedCollections.Editor
             }
         }
 
-        private void OnDrawNone(Rect rect)
+        private void OnDrawNoneElement(Rect rect)
         {
             EditorGUI.LabelField(rect, EditorGUIUtility.TrTextContent(_activeState.NoElementsText));
-        }
-
-        private ReorderableList MakeUnexpandedList()
-        {
-            var list = new ReorderableList(SerializedDictionaryDrawer.NoEntriesList, typeof(int));
-            list.drawHeaderCallback = DrawUnexpandedHeader;
-            return list;
         }
 
         private (DisplayType displayType, bool canToggleListDrawer) CreateDisplaySettings(SerializedProperty property, Type type)
@@ -321,7 +322,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             }
             DoKeyValueRect(adjustedTopRect.AppendDown(SerializedDictionaryDrawer.KeyValueHeaderHeight));
 
-            ProcessState();
+            UpdateAfterInput();
         }
 
         private void DoMainHeader(Rect rect)
