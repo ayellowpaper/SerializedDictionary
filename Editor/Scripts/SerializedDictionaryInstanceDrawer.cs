@@ -157,7 +157,9 @@ namespace AYellowpaper.SerializedCollections.Editor
             InitializeSettingsIfNeeded();
             ProcessState();
             CheckPaging();
-            ToggleSearchBar(_propertyData.AlwaysShowSearch ? true : SCEditorUtility.ShouldShowSearch(_pagingElement.PageCount));
+            var elementsPerPage = EditorUserSettings.Get().ElementsPerPage;
+            int pageCount = Mathf.Max(1, Mathf.CeilToInt((float)DefaultState.ListSize / elementsPerPage));
+            ToggleSearchBar(_propertyData.AlwaysShowSearch ? true : SCEditorUtility.ShouldShowSearch(pageCount));
         }
 
         private void InitializeSettingsIfNeeded()
