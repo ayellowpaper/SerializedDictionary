@@ -1,6 +1,6 @@
 using AYellowpaper.SerializedCollections.Editor.Data;
 using AYellowpaper.SerializedCollections.Editor.States;
-using AYellowpaper.SerializedCollections.Populators;
+using AYellowpaper.SerializedCollections.KeysGenerators;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -28,8 +28,8 @@ namespace AYellowpaper.SerializedCollections.Editor
         private List<int> _pagedIndices;
         private PagingElement _pagingElement;
         private int _lastListSize = -1;
-        private IReadOnlyList<KeysGeneratorData> _keyGeneratorsWithoutWindow;
-        private IReadOnlyList<KeysGeneratorData> _keyGeneratorsWithWindow;
+        private IReadOnlyList<KeyListGeneratorData> _keyGeneratorsWithoutWindow;
+        private IReadOnlyList<KeyListGeneratorData> _keyGeneratorsWithWindow;
         private SearchField _searchField;
         private GUIContent _shortDetailsContent;
         private GUIContent _detailsContent;
@@ -88,7 +88,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             _singleEditingData = new SingleEditingData();
 
-            var keyGenerators = KeysGeneratorCache.GetPopulatorsForType(_keyFieldInfo.FieldType);
+            var keyGenerators = KeyListGeneratorCache.GetPopulatorsForType(_keyFieldInfo.FieldType);
             _keyGeneratorsWithWindow = keyGenerators.Where(x => x.NeedsWindow).ToList();
             _keyGeneratorsWithoutWindow = keyGenerators.Where(x => !x.NeedsWindow).ToList();
 
@@ -383,15 +383,15 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void OnPopulatorDataSelected(object userData)
         {
-            var data = (KeysGeneratorData)userData;
-            var so = (KeysGenerator)ScriptableObject.CreateInstance(data.GeneratorType);
+            var data = (KeyListGeneratorData)userData;
+            var so = (KeyListGenerator)ScriptableObject.CreateInstance(data.GeneratorType);
             so.hideFlags = HideFlags.DontSave;
             ApplyPopulatorQueued(so, ModificationType.Add);
         }
 
         private void OpenKeysGeneratorSelectorWindow(Rect rect)
         {
-            var window = ScriptableObject.CreateInstance<KeysGeneratorSelectorWindow>();
+            var window = ScriptableObject.CreateInstance<KeyListGeneratorSelectorWindow>();
             window.Initialize(_keyGeneratorsWithWindow, _keyFieldInfo.FieldType);
             window.ShowAsDropDown(rect, new Vector2(400, 200));
             window.OnApply += ApplyPopulatorQueued;
@@ -433,9 +433,9 @@ namespace AYellowpaper.SerializedCollections.Editor
             SearchText = _searchField.OnToolbarGUI(rect.CutTop(2).CutHorizontal(6), SearchText);
         }
 
-        private void ApplyPopulatorQueued(KeysGenerator populator, ModificationType modificationType)
+        private void ApplyPopulatorQueued(KeyListGenerator populator, ModificationType modificationType)
         {
-            var array = populator.GetElements(_keyFieldInfo.FieldType).OfType<object>().ToArray();
+            var array = populator.GetKeys(_keyFieldInfo.FieldType).OfType<object>().ToArray();
             QueueAction(() => ApplyPopulator(array, modificationType));
         }
 

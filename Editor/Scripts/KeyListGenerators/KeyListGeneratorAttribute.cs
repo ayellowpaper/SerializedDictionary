@@ -1,15 +1,15 @@
 ﻿using System;
 
-namespace AYellowpaper.SerializedCollections.Populators
+namespace AYellowpaper.SerializedCollections.KeysGenerators
 {
     [AttributeUsage(AttributeTargets.Class)]
-    public class KeysGeneratorAttribute : Attribute
+    public class KeyListGeneratorAttribute : Attribute
     {
         public readonly string Name;
         public readonly Type TargetType;
         public readonly bool NeedsWindow;
 
-        public KeysGeneratorAttribute(string name, Type targetType, bool needsWindow = true)
+        public KeyListGeneratorAttribute(string name, Type targetType, bool needsWindow = true)
         {
             Name = name;
             TargetType = targetType;

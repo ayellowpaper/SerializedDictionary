@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
-namespace AYellowpaper.SerializedCollections.Populators
+namespace AYellowpaper.SerializedCollections.KeysGenerators
 {
-    [CustomEditor(typeof(KeysGenerator), true)]
-    public class KeysGeneratorEditor : UnityEditor.Editor
+    [CustomEditor(typeof(KeyListGenerator), true)]
+    public class KeyListGeneratorEditor : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {

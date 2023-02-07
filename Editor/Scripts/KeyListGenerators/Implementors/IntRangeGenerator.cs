@@ -1,19 +1,18 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-namespace AYellowpaper.SerializedCollections.Populators
+namespace AYellowpaper.SerializedCollections.KeysGenerators
 {
-    [KeysGenerator("Int Range", typeof(int))]
-    public class IntRangeGenerator : KeysGenerator
+    [KeyListGenerator("Int Range", typeof(int))]
+    public class IntRangeGenerator : KeyListGenerator
     {
         [SerializeField]
         private int _startValue = 1;
         [SerializeField]
         private int _endValue = 10;
 
-        public override IEnumerable GetElements(Type type)
+        public override IEnumerable GetKeys(Type type)
         {
             int dir = Math.Sign(_endValue - _startValue);
             dir = dir == 0 ? 1 : dir;

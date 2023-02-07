@@ -4,26 +4,24 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace AYellowpaper.SerializedCollections.Populators
+namespace AYellowpaper.SerializedCollections.KeysGenerators
 {
-    public class KeysGeneratorSelectorWindow : EditorWindow
+    public class KeyListGeneratorSelectorWindow : EditorWindow
     {
-        private static readonly Color BorderColor = new Color(36 / 255f, 36 / 255f, 36 / 255f);
-
         [SerializeField]
         private int _selectedIndex;
         [SerializeField]
         private ModificationType _modificationType;
 
-        private KeysGenerator _generator;
+        private KeyListGenerator _generator;
         private UnityEditor.Editor _editor;
-        private List<KeysGeneratorData> _generatorsData;
+        private List<KeyListGeneratorData> _generatorsData;
         private Type _targetType;
         private int _undoStart;
-        private Dictionary<Type, KeysGenerator> _keysGenerators = new Dictionary<Type, KeysGenerator>();
+        private Dictionary<Type, KeyListGenerator> _keysGenerators = new Dictionary<Type, KeyListGenerator>();
         private string _detailsText;
 
-        public event Action<KeysGenerator, ModificationType> OnApply;
+        public event Action<KeyListGenerator, ModificationType> OnApply;
 
         private void OnEnable()
         {
@@ -33,13 +31,13 @@ namespace AYellowpaper.SerializedCollections.Populators
             rootVisualElement.Add(element);
         }
 
-        public void Initialize(IEnumerable<KeysGeneratorData> generatorsData, Type type)
+        public void Initialize(IEnumerable<KeyListGeneratorData> generatorsData, Type type)
         {
             _targetType = type;
             _selectedIndex = 0;
             _modificationType = ModificationType.Add;
             _undoStart = Undo.GetCurrentGroup();
-            _generatorsData = new List<KeysGeneratorData>(generatorsData);
+            _generatorsData = new List<KeyListGeneratorData>(generatorsData);
             SetGeneratorIndex(0);
             Undo.undoRedoPerformed += HandleUndoCallback;
 
@@ -77,7 +75,7 @@ namespace AYellowpaper.SerializedCollections.Populators
 
         private void ApplyButtonClicked()
         {
-            OnApply?.Invoke(_editor.target as KeysGenerator, _modificationType);
+            OnApply?.Invoke(_editor.target as KeyListGenerator, _modificationType);
             OnApply = null;
             Close();
         }
@@ -110,7 +108,7 @@ namespace AYellowpaper.SerializedCollections.Populators
 
         private void UpdateDetailsText()
         {
-            var enumerable = _generator.GetElements(_targetType);
+            var enumerable = _generator.GetKeys(_targetType);
             int count = 0;
             var enumerator = enumerable.GetEnumerator();
             while (enumerator.MoveNext())
@@ -170,11 +168,11 @@ namespace AYellowpaper.SerializedCollections.Populators
             UpdateDetailsText();
         }
 
-        private KeysGenerator GetOrCreateKeysGenerator(Type type)
+        private KeyListGenerator GetOrCreateKeysGenerator(Type type)
         {
             if (!_keysGenerators.ContainsKey(type))
             {
-                var so = (KeysGenerator)CreateInstance(type);
+                var so = (KeyListGenerator)CreateInstance(type);
                 so.hideFlags = HideFlags.DontSave;
                 _keysGenerators.Add(type, so);
             }

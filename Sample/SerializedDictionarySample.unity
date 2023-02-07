@@ -256,13 +256,9 @@ MonoBehaviour:
   ElementDescriptions:
     _serializedList:
     - Key: 0
-      Value: Fire burns hot!
+      Value: This burns.
     - Key: 0
-      Value: Burn your enemies with the most descructive element.
-    - Key: 2
-      Value: Earth Descriptiond Changed
-    - Key: 3
-      Value: Bend water to your will.
+      Value: This also burns,
 --- !u!1001 &6519284502374354768
 PrefabInstance:
   m_ObjectHideFlags: 0
