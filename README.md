@@ -48,7 +48,7 @@ n this case, Int Range will create keys between the range of 1 to 10. Before you
 As as example, assume you have keys 5 to 15 in your dictionary, and have chosen 1 to 10 in the generator. Given the following options, the resulting keys will be as follows:
 
  - Add will result in keys from 1 to 15, because 1 to 4 will be added
- - Remove will result in keys 11 to 15, because 5 to 9 will be removed
+ - Remove will result in keys 11 to 15, because 5 to 10 will be removed
  - Confine will result in 1 to 10, because 1 to 4 will be added and 11 to 15 removed
 
 ## Creating Bulk Edit Operations
