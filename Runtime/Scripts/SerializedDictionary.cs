@@ -31,7 +31,7 @@ namespace AYellowpaper.SerializedCollections
             foreach (var kvp in _serializedList)
             {
 #if UNITY_EDITOR
-                if (!ContainsKey(kvp.Key))
+                if (SerializedCollectionsUtility.IsValidKey(kvp.Key) && !ContainsKey(kvp.Key))
                     Add(kvp.Key, kvp.Value);
 #else
                     Add(kvp.Key, kvp.Value);
