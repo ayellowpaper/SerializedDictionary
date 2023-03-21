@@ -50,6 +50,9 @@ namespace AYellowpaper.SerializedCollections
 #if UNITY_EDITOR
             if (UnityEditor.BuildPipeline.isBuildingPlayer)
                 LookupTable.RemoveDuplicates();
+#else
+            foreach (var kvp in this)
+                _serializedList.Add(new SerializedKeyValuePair<TKey, TValue>(kvp.Key, kvp.Value));
 #endif
         }
     }
