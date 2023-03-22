@@ -24,6 +24,24 @@ namespace AYellowpaper.SerializedCollections
         private DictionaryLookupTable<TKey, TValue> _lookupTable;
 #endif
 
+#if UNITY_EDITOR
+        public new void Add(TKey key, TValue value)
+        {
+            base.Add(key, value);
+            _serializedList.Add(new SerializedKeyValuePair<TKey, TValue>(key, value));
+        }
+
+        /// <summary>
+        /// Only available in Editor. Add a key value pair, even if the key already exists in the dictionary.
+        /// </summary>
+        public void AddConflictAllowed(TKey key, TValue value)
+        {
+            if (!ContainsKey(key))
+                base.Add(key, value);
+            _serializedList.Add(new SerializedKeyValuePair<TKey, TValue>(key, value));
+        }
+#endif
+
         public void OnAfterDeserialize()
         {
             Clear();
@@ -32,7 +50,7 @@ namespace AYellowpaper.SerializedCollections
             {
 #if UNITY_EDITOR
                 if (SerializedCollectionsUtility.IsValidKey(kvp.Key) && !ContainsKey(kvp.Key))
-                    Add(kvp.Key, kvp.Value);
+                    base.Add(kvp.Key, kvp.Value);
 #else
                     Add(kvp.Key, kvp.Value);
 #endif
