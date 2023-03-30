@@ -156,10 +156,22 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             InitializeSettingsIfNeeded();
             ProcessState();
+            CheckIfNewDictionary();
             CheckPaging();
             var elementsPerPage = EditorUserSettings.Get().ElementsPerPage;
             int pageCount = Mathf.Max(1, Mathf.CeilToInt((float)DefaultState.ListSize / elementsPerPage));
             ToggleSearchBar(_propertyData.AlwaysShowSearch ? true : SCEditorUtility.ShouldShowSearch(pageCount));
+        }
+
+        // TODO: This works for now, but isn't perfect. This checks if the serialized dictionary was reassigned with new(), simply by comparing the count. Should be instead done by reference equality in the future
+        private void CheckIfNewDictionary()
+        {
+            if (_singleEditingData.IsValid && _singleEditingData.LookupTable.GetCount() != _activeState.ListSize)
+            {
+                var dictionary = SCEditorUtility.GetPropertyValue(ListProperty, ListProperty.serializedObject.targetObject);
+                _singleEditingData.LookupTable = GetLookupTable(dictionary);
+                _singleEditingData.LookupTable.RecalculateOccurences();
+            }
         }
 
         private void InitializeSettingsIfNeeded()
@@ -253,7 +265,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         private ReorderableList MakeUnexpandedList()
         {
             var list = new ReorderableList(SerializedDictionaryDrawer.NoEntriesList, typeof(int));
-            list.drawHeaderCallback = DrawUnexpandedHeader;
+            list.drawHeaderCallback = OnDrawUnexpandedHeader;
             return list;
         }
 
@@ -288,18 +300,6 @@ namespace AYellowpaper.SerializedCollections.Editor
             return (displayType, canToggleListDrawer);
         }
 
-        private void DrawUnexpandedHeader(Rect rect)
-        {
-            EditorGUI.BeginProperty(rect, _label, ListProperty);
-            ListProperty.isExpanded = EditorGUI.Foldout(rect.WithX(rect.x - 5), ListProperty.isExpanded, _label, true);
-
-            var detailsStyle = EditorStyles.miniLabel;
-            var detailsRect = rect.AppendRight(0).AppendLeft(detailsStyle.CalcSize(_shortDetailsContent).x);
-            GUI.Label(detailsRect, _shortDetailsContent, detailsStyle);
-
-            EditorGUI.EndProperty();
-        }
-
         private void DoPaging(Rect rect)
         {
             EditorGUI.BeginChangeCheck();
@@ -324,6 +324,20 @@ namespace AYellowpaper.SerializedCollections.Editor
             }
             DoKeyValueRect(adjustedTopRect.AppendDown(SerializedDictionaryDrawer.KeyValueHeaderHeight));
 
+            UpdateAfterInput();
+        }
+        
+        private void OnDrawUnexpandedHeader(Rect rect)
+        {
+            EditorGUI.BeginProperty(rect, _label, ListProperty);
+            ListProperty.isExpanded = EditorGUI.Foldout(rect.WithX(rect.x - 5), ListProperty.isExpanded, _label, true);
+
+            var detailsStyle = EditorStyles.miniLabel;
+            var detailsRect = rect.AppendRight(0).AppendLeft(detailsStyle.CalcSize(_shortDetailsContent).x);
+            GUI.Label(detailsRect, _shortDetailsContent, detailsStyle);
+
+            EditorGUI.EndProperty();
+            
             UpdateAfterInput();
         }
 
@@ -673,11 +687,6 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             _activeState.RemoveElementAt(_pagedIndices[list.index]);
             UpdatePaging();
-            //int actualIndex = _pagedIndices[list.index];
-            //ListProperty.DeleteArrayElementAtIndex(actualIndex);
-            //UpdatePaging();
-            //if (actualIndex >= ListProperty.minArraySize)
-            //    list.index = _pagedIndices.Count - 1;
         }
     }
 }

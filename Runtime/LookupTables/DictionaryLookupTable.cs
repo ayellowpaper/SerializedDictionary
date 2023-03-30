@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 namespace AYellowpaper.SerializedCollections
 {
@@ -62,6 +63,11 @@ namespace AYellowpaper.SerializedCollections
         public object GetKeyAt(int index)
         {
             return _dictionary._serializedList[index];
+        }
+
+        public int GetCount()
+        {
+            return _dictionary._serializedList.Count;
         }
 
         public void RemoveDuplicates()

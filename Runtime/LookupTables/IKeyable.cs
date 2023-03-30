@@ -14,6 +14,7 @@ namespace AYellowpaper.SerializedCollections
         void RemoveKey(object key);
         void RemoveAt(int index);
         object GetKeyAt(int index);
+        int GetCount();
         void RemoveDuplicates();
     }
 }
