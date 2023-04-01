@@ -73,6 +73,7 @@ namespace AYellowpaper.SerializedCollections
             get => base[key];
             set
             {
+                base[key] = value;
                 for (int i = 0; i < _serializedList.Count; i++)
                 {
                     var kvp = _serializedList[i];
@@ -81,8 +82,6 @@ namespace AYellowpaper.SerializedCollections
                     kvp.Value = value;
                     _serializedList[i] = kvp;
                 }
-                
-                base[key] = value;
             }
         }
         
