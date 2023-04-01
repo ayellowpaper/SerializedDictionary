@@ -50,7 +50,7 @@ namespace AYellowpaper.SerializedCollections
             for (int i = _dictionary._serializedList.Count - 1; i >= 0; i--)
             {
                 var dictKey = _dictionary._serializedList[i].Key;
-                if ((object)dictKey == key || dictKey.Equals(key))
+                if (SerializedCollectionsUtility.KeysAreEqual(dictKey, key))
                     _dictionary._serializedList.RemoveAt(i);
             }
         }

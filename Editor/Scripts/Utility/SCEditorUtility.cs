@@ -15,21 +15,6 @@ namespace AYellowpaper.SerializedCollections.Editor
         public const bool KeyFlag = true;
         public const bool ValueFlag = false;
 
-        public static bool GetPersistentBool(string path, bool defaultValue)
-        {
-            return EditorPrefs.GetBool(EditorPrefsPrefix + path, defaultValue);
-        }
-
-        public static bool HasKey(string path)
-        {
-            return EditorPrefs.HasKey( EditorPrefsPrefix + path );
-        }
-
-        public static void SetPersistentBool(string path, bool value)
-        {
-            EditorPrefs.SetBool(EditorPrefsPrefix + path, value);
-        }
-
         public static float CalculateHeight(SerializedProperty property, DisplayType displayType)
         {
             return CalculateHeight(property, displayType == DisplayType.List ? true : false);
@@ -62,11 +47,6 @@ namespace AYellowpaper.SerializedCollections.Editor
             {
                 yield return property;
             } while (property.NextVisible(recursive) && !SerializedProperty.EqualContents(property, end));
-        }
-
-        public static int GetActualArraySize(SerializedProperty arrayProperty)
-        {
-            return GetChildren(arrayProperty).Count() - 1;
         }
 
         public static PropertyData GetPropertyData(SerializedProperty property)

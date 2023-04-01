@@ -6,7 +6,7 @@ using UnityEngine;
 namespace AYellowpaper.SerializedCollections
 {
     [System.Serializable]
-    public partial class SerializedDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver
+    public class SerializedDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver
     {
         [SerializeField]
         internal List<SerializedKeyValuePair<TKey, TValue>> _serializedList = new List<SerializedKeyValuePair<TKey, TValue>>();
@@ -68,6 +68,24 @@ namespace AYellowpaper.SerializedCollections
         }
 
 #if UNITY_EDITOR
+        public new TValue this[TKey key]
+        {
+            get => base[key];
+            set
+            {
+                for (int i = 0; i < _serializedList.Count; i++)
+                {
+                    var kvp = _serializedList[i];
+                    if (!SerializedCollectionsUtility.KeysAreEqual(key, kvp.Key))
+                        continue;
+                    kvp.Value = value;
+                    _serializedList[i] = kvp;
+                }
+                
+                base[key] = value;
+            }
+        }
+        
         public new void Add(TKey key, TValue value)
         {
             base.Add(key, value);

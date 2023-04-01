@@ -18,5 +18,10 @@ namespace AYellowpaper.SerializedCollections
                 return false;
             }
         }
+
+        public static bool KeysAreEqual<T>(T key, object otherKey)
+        {
+            return (object)key == otherKey || key.Equals(otherKey);
+        }
     }
 }
