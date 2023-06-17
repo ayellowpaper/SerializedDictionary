@@ -8,6 +8,8 @@ namespace AYellowpaper.SerializedCollections.Editor.Data
     internal class PropertyData
     {
         [SerializeField]
+        private float _keyLabelWidth;
+        [SerializeField]
         private ElementData _keyData;
         [SerializeField]
         private ElementData _valueData;
@@ -18,6 +20,12 @@ namespace AYellowpaper.SerializedCollections.Editor.Data
         {
             get => _alwaysShowSearch;
             set => _alwaysShowSearch = value;
+        }
+
+        public float KeyLabelWidth
+        {
+            get => _keyLabelWidth;
+            set => _keyLabelWidth = value;
         }
 
         public ElementData GetElementData(bool fieldType)

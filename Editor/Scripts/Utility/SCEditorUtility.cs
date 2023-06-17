@@ -114,8 +114,71 @@ namespace AYellowpaper.SerializedCollections.Editor
                 return false;
             }
         }
+        
+        internal static float DoHorizontalScale(Rect rect, float value)
+        {
+            var controlId = GUIUtility.GetControlID(FocusType.Passive);
+            var isMovingMouse = Event.current.type == EventType.MouseDrag;
+            DoButtonControl(rect, controlId, false, false, GUIContent.none, GUIStyle.none);
+            
+            if (controlId == GUIUtility.hotControl && isMovingMouse)
+            {
+                value += Event.current.delta.x;
+                GUI.changed = true;
+            }
+            
+            EditorGUIUtility.AddCursorRect(rect, MouseCursor.ResizeHorizontal);
 
+            return value;
+        }
+        
+        internal static bool DoButtonControl(Rect rect, int id, bool on, bool hover, GUIContent content, GUIStyle style)
+        {
+            Event current = Event.current;
+            switch (current.type)
+            {
+                case EventType.MouseDown:
+                    if (HitTest(rect, current.mousePosition))
+                    {
+                        GUIUtility.hotControl = id;
+                        current.Use();
+                    }
+                    break;
+                case EventType.MouseUp:
+                    if (GUIUtility.hotControl == id)
+                    {
+                        GUIUtility.hotControl = 0;
+                        current.Use();
+                        if (HitTest(rect, current.mousePosition))
+                        {
+                            GUI.changed = true;
+                            return !on;
+                        }
+                    }
+                    break;
+                case EventType.MouseDrag:
+                    if (GUIUtility.hotControl == id)
+                    {
+                        current.Use();
+                    }
+                    break;
+                case EventType.KeyDown:
+                    bool flag = current.alt || current.shift || current.command || current.control;
+                    if ((current.keyCode == KeyCode.Space || current.keyCode == KeyCode.Return || current.keyCode == KeyCode.KeypadEnter) && !flag && GUIUtility.keyboardControl == id)
+                    {
+                        current.Use();
+                        GUI.changed = true;
+                        return !on;
+                    }
+                    break;
+                case EventType.Repaint:
+                    style.Draw(rect, content, id, on, hover);
+                    break;
+            }
+            return on;
+        }
 
+        internal static bool HitTest(Rect rect, Vector2 point) => point.x >= rect.xMin && point.x < rect.xMax && point.y >= rect.yMin && point.y < rect.yMax;
 
 
         public static object GetPropertyValue(SerializedProperty prop, object target)
