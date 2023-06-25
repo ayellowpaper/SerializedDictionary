@@ -74,14 +74,19 @@ namespace AYellowpaper.SerializedCollections
             set
             {
                 base[key] = value;
+                bool anyEntryWasFound = false;
                 for (int i = 0; i < _serializedList.Count; i++)
                 {
                     var kvp = _serializedList[i];
                     if (!SerializedCollectionsUtility.KeysAreEqual(key, kvp.Key))
                         continue;
+                    anyEntryWasFound = true;
                     kvp.Value = value;
                     _serializedList[i] = kvp;
                 }
+                
+                if (!anyEntryWasFound)
+                    _serializedList.Add(new SerializedKeyValuePair<TKey, TValue>(key, value));
             }
         }
         

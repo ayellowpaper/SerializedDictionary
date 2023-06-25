@@ -180,7 +180,8 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             void InitializeSettings(bool fieldFlag)
             {
-                var genericArgs = _fieldInfo.FieldType.GetGenericArguments();
+                var dictionaryType = FindGenericBaseType(typeof(SerializedDictionary<,>), _fieldInfo.FieldType);
+                var genericArgs = dictionaryType.GetGenericArguments();
                 var firstProperty = ListProperty.GetArrayElementAtIndex(0);
                 var keySettings = CreateDisplaySettings(GetElementProperty(firstProperty, fieldFlag), genericArgs[fieldFlag == SCEditorUtility.KeyFlag ? 0 : 1]);
                 var settings = _propertyData.GetElementData(fieldFlag).Settings;
@@ -195,6 +196,19 @@ namespace AYellowpaper.SerializedCollections.Editor
                 InitializeSettings(SCEditorUtility.ValueFlag);
                 SavePropertyData();
             }
+        }
+
+        private static Type FindGenericBaseType(Type generic, Type toCheck)
+        {
+            while (toCheck != null && toCheck != typeof(object))
+            {
+                var cur = toCheck.IsGenericType ? toCheck.GetGenericTypeDefinition() : toCheck;
+                if (generic == cur) {
+                    return cur;
+                }
+                toCheck = toCheck.BaseType;
+            }
+            return null;
         }
 
         private void CheckPaging()

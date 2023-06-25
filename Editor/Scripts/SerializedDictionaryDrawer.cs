@@ -16,7 +16,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 #if ODIN_INSPECTOR
     [Sirenix.OdinInspector.Editor.DrawerPriority(Sirenix.OdinInspector.Editor.DrawerPriorityLevel.SuperPriority)]
 #endif
-    [CustomPropertyDrawer(typeof(SerializedDictionary<,>))]
+    [CustomPropertyDrawer(typeof(SerializedDictionary<,>), true)]
     public class SerializedDictionaryDrawer : PropertyDrawer
     {
         public const string KeyName = nameof(SerializedKeyValuePair<int, int>.Key);
