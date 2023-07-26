@@ -204,7 +204,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             {
                 var cur = toCheck.IsGenericType ? toCheck.GetGenericTypeDefinition() : toCheck;
                 if (generic == cur) {
-                    return cur;
+                    return toCheck;
                 }
                 toCheck = toCheck.BaseType;
             }
