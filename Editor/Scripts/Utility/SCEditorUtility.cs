@@ -70,15 +70,15 @@ namespace AYellowpaper.SerializedCollections.Editor
             return settings.AlwaysShowSearch ? true : pages >= settings.PageCountForSearch;
         }
 
-        public static bool HasDrawerForType(Type type)
+        public static bool HasDrawerForProperty(SerializedProperty property, Type type)
         {
             Type attributeUtilityType = typeof(SerializedProperty).Assembly.GetType("UnityEditor.ScriptAttributeUtility");
             if (attributeUtilityType == null)
                 return false;
-            var getDrawerMethod = attributeUtilityType.GetMethod("GetDrawerTypeForType", BindingFlags.Static | BindingFlags.NonPublic);
+            var getDrawerMethod = attributeUtilityType.GetMethod("GetDrawerTypeForPropertyAndType", BindingFlags.Static | BindingFlags.NonPublic);
             if (getDrawerMethod == null)
                 return false;
-            return getDrawerMethod.Invoke(null, new object[] { type }) != null;
+            return getDrawerMethod.Invoke(null, new object[] { property, type }) != null;
         }
 
         internal static void AddGenericMenuItem(GenericMenu genericMenu, bool isOn, bool isEnabled, GUIContent content, GenericMenu.MenuFunction action)

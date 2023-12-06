@@ -167,6 +167,7 @@ namespace AYellowpaper.SerializedCollections
             if (_serializedList.Count == 0 && Count > 0)
                 SyncDictionaryToBackingField_Editor();
 #else
+            _serializedList.Clear();
             foreach (var kvp in this)
                 _serializedList.Add(new SerializedKeyValuePair<TKey, TValue>(kvp.Key, kvp.Value));
 #endif
