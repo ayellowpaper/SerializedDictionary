@@ -1,6 +1,6 @@
 {
   "name": "ayellowpaper.serialized-dictionary",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "Serialized Dictionary",
   "unity": "2021.3",
   "description": "Serialized Dictionary enables you to serialize dictionaries, including a very easy to use, native-feeling editor, search, duplicate keys in editor for testing and debugging and much more.",
