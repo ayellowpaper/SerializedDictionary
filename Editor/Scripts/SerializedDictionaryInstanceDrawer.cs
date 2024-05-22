@@ -15,6 +15,8 @@ namespace AYellowpaper.SerializedCollections.Editor
 {
     public class SerializedDictionaryInstanceDrawer
     {
+        private const float MinKeyValueLabelWidth = 40f;
+        
         private FieldInfo _fieldInfo;
         private ReorderableList _unexpandedList;
         private SingleEditingData _singleEditingData;
@@ -156,17 +158,30 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             InitializeSettingsIfNeeded();
             ProcessState();
+            CheckIfNewDictionary();
             CheckPaging();
             var elementsPerPage = EditorUserSettings.Get().ElementsPerPage;
             int pageCount = Mathf.Max(1, Mathf.CeilToInt((float)DefaultState.ListSize / elementsPerPage));
             ToggleSearchBar(_propertyData.AlwaysShowSearch ? true : SCEditorUtility.ShouldShowSearch(pageCount));
         }
 
+        // TODO: This works for now, but isn't perfect. This checks if the serialized dictionary was reassigned with new(), simply by comparing the count. Should be instead done by reference equality in the future
+        private void CheckIfNewDictionary()
+        {
+            if (_singleEditingData.IsValid && _singleEditingData.LookupTable.GetCount() != _activeState.ListSize)
+            {
+                var dictionary = SCEditorUtility.GetPropertyValue(ListProperty, ListProperty.serializedObject.targetObject);
+                _singleEditingData.LookupTable = GetLookupTable(dictionary);
+                _singleEditingData.LookupTable.RecalculateOccurences();
+            }
+        }
+
         private void InitializeSettingsIfNeeded()
         {
             void InitializeSettings(bool fieldFlag)
             {
-                var genericArgs = _fieldInfo.FieldType.GetGenericArguments();
+                var dictionaryType = FindGenericBaseType(typeof(SerializedDictionary<,>), _fieldInfo.FieldType);
+                var genericArgs = dictionaryType.GetGenericArguments();
                 var firstProperty = ListProperty.GetArrayElementAtIndex(0);
                 var keySettings = CreateDisplaySettings(GetElementProperty(firstProperty, fieldFlag), genericArgs[fieldFlag == SCEditorUtility.KeyFlag ? 0 : 1]);
                 var settings = _propertyData.GetElementData(fieldFlag).Settings;
@@ -181,6 +196,19 @@ namespace AYellowpaper.SerializedCollections.Editor
                 InitializeSettings(SCEditorUtility.ValueFlag);
                 SavePropertyData();
             }
+        }
+
+        private static Type FindGenericBaseType(Type generic, Type toCheck)
+        {
+            while (toCheck != null && toCheck != typeof(object))
+            {
+                var cur = toCheck.IsGenericType ? toCheck.GetGenericTypeDefinition() : toCheck;
+                if (generic == cur) {
+                    return toCheck;
+                }
+                toCheck = toCheck.BaseType;
+            }
+            return null;
         }
 
         private void CheckPaging()
@@ -253,7 +281,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         private ReorderableList MakeUnexpandedList()
         {
             var list = new ReorderableList(SerializedDictionaryDrawer.NoEntriesList, typeof(int));
-            list.drawHeaderCallback = DrawUnexpandedHeader;
+            list.drawHeaderCallback = OnDrawUnexpandedHeader;
             return list;
         }
 
@@ -276,7 +304,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private (DisplayType displayType, bool canToggleListDrawer) CreateDisplaySettings(SerializedProperty property, Type type)
         {
-            bool hasCustomEditor = SCEditorUtility.HasDrawerForType(type);
+            bool hasCustomEditor = SCEditorUtility.HasDrawerForProperty(property, type);
             bool isGenericWithChildren = property.propertyType == SerializedPropertyType.Generic && property.hasVisibleChildren;
             bool isArray = property.isArray && property.propertyType != SerializedPropertyType.String;
             bool canToggleListDrawer = isArray || (isGenericWithChildren && hasCustomEditor);
@@ -286,18 +314,6 @@ namespace AYellowpaper.SerializedCollections.Editor
             else if (!isArray && isGenericWithChildren && !hasCustomEditor)
                 displayType = DisplayType.List;
             return (displayType, canToggleListDrawer);
-        }
-
-        private void DrawUnexpandedHeader(Rect rect)
-        {
-            EditorGUI.BeginProperty(rect, _label, ListProperty);
-            ListProperty.isExpanded = EditorGUI.Foldout(rect.WithX(rect.x - 5), ListProperty.isExpanded, _label, true);
-
-            var detailsStyle = EditorStyles.miniLabel;
-            var detailsRect = rect.AppendRight(0).AppendLeft(detailsStyle.CalcSize(_shortDetailsContent).x);
-            GUI.Label(detailsRect, _shortDetailsContent, detailsStyle);
-
-            EditorGUI.EndProperty();
         }
 
         private void DoPaging(Rect rect)
@@ -324,6 +340,20 @@ namespace AYellowpaper.SerializedCollections.Editor
             }
             DoKeyValueRect(adjustedTopRect.AppendDown(SerializedDictionaryDrawer.KeyValueHeaderHeight));
 
+            UpdateAfterInput();
+        }
+        
+        private void OnDrawUnexpandedHeader(Rect rect)
+        {
+            EditorGUI.BeginProperty(rect, _label, ListProperty);
+            ListProperty.isExpanded = EditorGUI.Foldout(rect.WithX(rect.x - 5), ListProperty.isExpanded, _label, true);
+
+            var detailsStyle = EditorStyles.miniLabel;
+            var detailsRect = rect.AppendRight(0).AppendLeft(detailsStyle.CalcSize(_shortDetailsContent).x);
+            GUI.Label(detailsRect, _shortDetailsContent, detailsStyle);
+
+            EditorGUI.EndProperty();
+            
             UpdateAfterInput();
         }
 
@@ -405,14 +435,26 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void DoKeyValueRect(Rect rect)
         {
-            float width = EditorGUIUtility.labelWidth + 22;
+            var width = GetDesiredKeyLabelWidth(rect.width, 22);
             Rect leftRect = rect.WithWidth(width);
             Rect rightRect = leftRect.AppendRight(rect.width - width);
 
-            if (Event.current.type == EventType.Repaint && _propertyData != null)
+            if (_propertyData != null)
             {
-                _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(_propertyData.GetElementData(SerializedDictionaryDrawer.KeyFlag).Settings.DisplayName), false, false, false, false);
-                _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(_propertyData.GetElementData(SerializedDictionaryDrawer.ValueFlag).Settings.DisplayName), false, false, false, false);
+                if (Event.current.type == EventType.Repaint)
+                {
+                    _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(_propertyData.GetElementData(SerializedDictionaryDrawer.KeyFlag).Settings.DisplayName), false, false, false, false);
+                    _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(_propertyData.GetElementData(SerializedDictionaryDrawer.ValueFlag).Settings.DisplayName), false, false, false, false);
+                }
+                var changeSizeRect = leftRect.AppendRight(5);
+                changeSizeRect.x -= 2;
+                EditorGUI.BeginChangeCheck();
+                float newWidth = SCEditorUtility.DoHorizontalScale(changeSizeRect, _propertyData.KeyLabelWidth > 0f ? _propertyData.KeyLabelWidth : width);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    _propertyData.KeyLabelWidth = Mathf.Max(newWidth, MinKeyValueLabelWidth);
+                    SavePropertyData();
+                }
             }
 
             if (ListProperty.minArraySize > 0)
@@ -422,6 +464,14 @@ namespace AYellowpaper.SerializedCollections.Editor
             }
 
             EditorGUI.DrawRect(rect.AppendDown(1, -1), SerializedDictionaryDrawer.BorderColor);
+        }
+
+        private float GetDesiredKeyLabelWidth(float maxWidth, float offset = 0f)
+        {
+            float desiredWidth = _propertyData is { KeyLabelWidth: > 0 }
+                ? _propertyData.KeyLabelWidth
+                : EditorGUIUtility.labelWidth;
+            return Mathf.Clamp(desiredWidth + offset, MinKeyValueLabelWidth, maxWidth - MinKeyValueLabelWidth);
         }
 
         private void DoSearch(Rect rect)
@@ -555,7 +605,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             int actualIndex = _pagedIndices[index];
             var element = _activeState.GetPropertyAtIndex(actualIndex);
-            return CalculateHeightOfElement(element, _propertyData.GetElementData(SerializedDictionaryDrawer.KeyFlag).EffectiveDisplayType == DisplayType.List ? true : false, _propertyData.GetElementData(SerializedDictionaryDrawer.ValueFlag).EffectiveDisplayType == DisplayType.List ? true : false);
+            return CalculateHeightOfElement(element, _propertyData.GetElementData(SerializedDictionaryDrawer.KeyFlag).EffectiveDisplayType == DisplayType.List, _propertyData.GetElementData(SerializedDictionaryDrawer.ValueFlag).EffectiveDisplayType == DisplayType.List);
         }
 
         private void OnDrawElement(Rect rect, int index, bool isActive, bool isFocused)
@@ -568,7 +618,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             int actualIndex = _pagedIndices[index];
 
             SerializedProperty kvp = _activeState.GetPropertyAtIndex(actualIndex);
-            Rect keyRect = rect.WithSize(EditorGUIUtility.labelWidth - lineLeftSpace, EditorGUIUtility.singleLineHeight);
+            Rect keyRect = rect.WithSize(GetDesiredKeyLabelWidth(rect.width) - lineLeftSpace, EditorGUIUtility.singleLineHeight);
             Rect lineRect = keyRect.WithXAndWidth(keyRect.x + keyRect.width + lineLeftSpace, lineWidth).WithHeight(rect.height);
             Rect valueRect = keyRect.AppendRight(rect.width - keyRect.width - totalSpace, totalSpace);
 
@@ -673,11 +723,6 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             _activeState.RemoveElementAt(_pagedIndices[list.index]);
             UpdatePaging();
-            //int actualIndex = _pagedIndices[list.index];
-            //ListProperty.DeleteArrayElementAtIndex(actualIndex);
-            //UpdatePaging();
-            //if (actualIndex >= ListProperty.minArraySize)
-            //    list.index = _pagedIndices.Count - 1;
         }
     }
 }
