@@ -100,6 +100,10 @@ namespace AYellowpaper.SerializedCollections.Editor
             _totalRect = position;
             _label = new GUIContent(label);
 
+            // Sync the serialized object with the actual data to prevent 
+            // overwriting external changes with stale cached values.
+            ListProperty.serializedObject.Update();
+            
             EditorGUI.BeginChangeCheck();
             DoList(position);
             if (EditorGUI.EndChangeCheck())
