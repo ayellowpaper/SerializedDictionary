@@ -100,9 +100,11 @@ namespace AYellowpaper.SerializedCollections.Editor
             _totalRect = position;
             _label = new GUIContent(label);
 
-            // Sync the serialized object with the actual data to prevent 
-            // overwriting external changes with stale cached values.
-            ListProperty.serializedObject.Update();
+            // Only call Update() in EditorWindow contexts where it's required.
+            // In PropertyDrawers for MonoBehaviours/ScriptableObjects, Unity manages serialization
+            // and calling Update() interferes with pending edits, causing values to revert.
+            if (ListProperty.serializedObject.targetObject is EditorWindow)
+                ListProperty.serializedObject.Update();
             
             EditorGUI.BeginChangeCheck();
             DoList(position);
