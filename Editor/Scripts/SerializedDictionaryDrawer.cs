@@ -35,7 +35,9 @@ namespace AYellowpaper.SerializedCollections.Editor
             {
                 if (_displayTypeToggleContent == null)
                 {
-                    var texture = AssetDatabase.LoadAssetAtPath<Texture>("Assets/Plugins/SerializedCollections/Editor/Assets/BurgerMenu@2x.png");
+                    //Editor/Assets/BurgerMenu@2x.png
+                    var assetPath = AssetDatabase.GUIDToAssetPath("8deddfed9f39d7740879d2cb0fcf7ce0");
+                    var texture = AssetDatabase.LoadAssetAtPath<Texture>(assetPath);
                     _displayTypeToggleContent = new GUIContent(texture, "Toggle to either draw existing editor or draw properties manually.");
                 }
                 return _displayTypeToggleContent;
