@@ -409,20 +409,16 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void DoKeyValueRect(Rect rect)
         {
-            float width = EditorGUIUtility.labelWidth + 22;
-            Rect leftRect = rect.WithWidth(width);
-            Rect rightRect = leftRect.AppendRight(rect.width - width);
+            Rect leftRect = rect.WithWidth(rect.width);
 
             if (Event.current.type == EventType.Repaint && _propertyData != null)
             {
                 _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(_propertyData.GetElementData(SerializedHashSetDrawer.KeyFlag).Settings.DisplayName), false, false, false, false);
-                _keyValueStyle.Draw(rightRect, EditorGUIUtility.TrTextContent(_propertyData.GetElementData(SerializedHashSetDrawer.ValueFlag).Settings.DisplayName), false, false, false, false);
             }
 
             if (ListProperty.minArraySize > 0)
             {
                 DoDisplayTypeToggle(leftRect, SerializedHashSetDrawer.KeyFlag);
-                DoDisplayTypeToggle(rightRect, SerializedHashSetDrawer.ValueFlag);
             }
 
             EditorGUI.DrawRect(rect.AppendDown(1, -1), SerializedHashSetDrawer.BorderColor);
@@ -564,17 +560,10 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void OnDrawElement(Rect rect, int index, bool isActive, bool isFocused)
         {
-            const int lineLeftSpace = 2;
-            const int lineWidth = 1;
-            const int lineRightSpace = 12;
-            const int totalSpace = lineLeftSpace + lineWidth + lineRightSpace;
-
             int actualIndex = _pagedIndices[index];
 
             SerializedProperty kvp = _activeState.GetPropertyAtIndex(actualIndex);
-            Rect keyRect = rect.WithSize(EditorGUIUtility.labelWidth - lineLeftSpace, EditorGUIUtility.singleLineHeight);
-            Rect lineRect = keyRect.WithXAndWidth(keyRect.x + keyRect.width + lineLeftSpace, lineWidth).WithHeight(rect.height);
-            Rect valueRect = keyRect.AppendRight(rect.width - keyRect.width - totalSpace, totalSpace);
+            Rect keyRect = rect.WithSize(rect.width, EditorGUIUtility.singleLineHeight);
 
             var elementProperty = kvp.FindPropertyRelative(SerializedHashSetDrawer.ElementName);
 
@@ -594,9 +583,9 @@ namespace AYellowpaper.SerializedCollections.Editor
             }
 
             var elementDisplayData = _propertyData.GetElementData(SerializedHashSetDrawer.KeyFlag);
-            DrawGroupedElement(keyRect, 20, elementProperty, elementDisplayData.EffectiveDisplayType);
+            DrawGroupedElement(keyRect, (int)rect.width, elementProperty, elementDisplayData.EffectiveDisplayType);
 
-            EditorGUI.DrawRect(lineRect, new Color(36 / 255f, 36 / 255f, 36 / 255f));
+            //EditorGUI.DrawRect(lineRect, new Color(36 / 255f, 36 / 255f, 36 / 255f));
             GUI.color = prevColor;
         }
 
