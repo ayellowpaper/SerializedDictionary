@@ -23,7 +23,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         private Rect _totalRect;
         private GUIStyle _keyValueStyle;
         private SerializedHashSetAttribute _hashSetAttribute;
-        private PropertyData _propertyData;
+        private HashSetPropertyData _propertyData; // Value not set
         private bool _propertyListSettingsInitialized = false;
         private List<int> _pagedIndices;
         private PagingElement _pagingElement;
@@ -69,8 +69,8 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             _hashSetAttribute = _fieldInfo.GetCustomAttribute<SerializedHashSetAttribute>();
 
-            _propertyData = SCEditorUtility.GetPropertyData(ListProperty);
-            _propertyData.GetElementData(SCEditorUtility.KeyFlag).Settings.DisplayName = _hashSetAttribute?.ElementName ?? "Element";
+            _propertyData = SCEditorUtility.GetHashSetPropertyData(ListProperty);
+            _propertyData.GetElementData().Settings.DisplayName = _hashSetAttribute?.ElementName ?? "Element";
             SavePropertyData();
 
             _pagingElement = new PagingElement();
@@ -173,7 +173,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 var genericArgs = _fieldInfo.FieldType.GetGenericArguments();
                 var firstProperty = ListProperty.GetArrayElementAtIndex(0);
                 var keySettings = CreateDisplaySettings(GetElementProperty(firstProperty), genericArgs[fieldFlag == SCEditorUtility.KeyFlag ? 0 : 1]);
-                var settings = _propertyData.GetElementData(fieldFlag).Settings;
+                var settings = _propertyData.GetElementData().Settings;
                 settings.DisplayType = keySettings.displayType;
                 settings.HasListDrawerToggle = keySettings.canToggleListDrawer;
             }
@@ -200,7 +200,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void SavePropertyData()
         {
-            SCEditorUtility.SavePropertyData(ListProperty, _propertyData);
+            SCEditorUtility.SaveHashSetPropertyData(ListProperty, _propertyData);
         }
 
         private void UpdateSingleEditing()
@@ -413,7 +413,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
             if (Event.current.type == EventType.Repaint && _propertyData != null)
             {
-                _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(_propertyData.GetElementData(SerializedHashSetDrawer.KeyFlag).Settings.DisplayName), false, false, false, false);
+                _keyValueStyle.Draw(leftRect, EditorGUIUtility.TrTextContent(_propertyData.GetElementData().Settings.DisplayName), false, false, false, false);
             }
 
             if (ListProperty.minArraySize > 0)
@@ -534,7 +534,7 @@ namespace AYellowpaper.SerializedCollections.Editor
 
         private void DoDisplayTypeToggle(Rect contentRect, bool fieldFlag)
         {
-            var displayData = _propertyData.GetElementData(fieldFlag);
+            var displayData = _propertyData.GetElementData();
 
             if (displayData.Settings.HasListDrawerToggle)
             {
@@ -555,7 +555,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             int actualIndex = _pagedIndices[index];
             var element = _activeState.GetPropertyAtIndex(actualIndex);
-            return CalculateHeightOfElement(element, _propertyData.GetElementData(SerializedHashSetDrawer.KeyFlag).EffectiveDisplayType == DisplayType.List ? true : false, _propertyData.GetElementData(SerializedHashSetDrawer.ValueFlag).EffectiveDisplayType == DisplayType.List ? true : false);
+            return CalculateHeightOfElement(element, _propertyData.GetElementData().EffectiveDisplayType == DisplayType.List ? true : false, _propertyData.GetElementData().EffectiveDisplayType == DisplayType.List ? true : false);
         }
 
         private void OnDrawElement(Rect rect, int index, bool isActive, bool isFocused)
@@ -582,7 +582,7 @@ namespace AYellowpaper.SerializedCollections.Editor
                 }
             }
 
-            var elementDisplayData = _propertyData.GetElementData(SerializedHashSetDrawer.KeyFlag);
+            var elementDisplayData = _propertyData.GetElementData();
             DrawGroupedElement(keyRect, (int)rect.width, elementProperty, elementDisplayData.EffectiveDisplayType);
 
             //EditorGUI.DrawRect(lineRect, new Color(36 / 255f, 36 / 255f, 36 / 255f));
