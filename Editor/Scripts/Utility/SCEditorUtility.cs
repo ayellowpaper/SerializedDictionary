@@ -78,7 +78,22 @@ namespace AYellowpaper.SerializedCollections.Editor
             return data;
         }
 
+        public static HashSetPropertyData GetHashSetPropertyData(SerializedProperty property)
+        {
+            var data = new HashSetPropertyData();
+            var json = EditorPrefs.GetString(EditorPrefsPrefix + property.propertyPath, null);
+            if (json != null)
+                EditorJsonUtility.FromJsonOverwrite(json, data);
+            return data;
+        }
+
         public static void SavePropertyData(SerializedProperty property, PropertyData propertyData)
+        {
+            var json = EditorJsonUtility.ToJson(propertyData);
+            EditorPrefs.SetString(EditorPrefsPrefix + property.propertyPath, json);
+        }
+
+        public static void SaveHashSetPropertyData(SerializedProperty property, HashSetPropertyData propertyData)
         {
             var json = EditorJsonUtility.ToJson(propertyData);
             EditorPrefs.SetString(EditorPrefsPrefix + property.propertyPath, json);
