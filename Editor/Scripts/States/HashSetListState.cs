@@ -26,9 +26,9 @@ namespace AYellowpaper.SerializedCollections.Editor.States
         public abstract void RemoveElementAt(int index);
         public abstract void InserElementAt(int index);
 
-        public virtual float GetHeightAtIndex(int index, bool drawKeyAsList, bool drawValueAsList)
+        public virtual float GetHeightAtIndex(int index, bool drawValueAsList)
         {
-            return SerializedHashSetInstanceDrawer.CalculateHeightOfElement(GetPropertyAtIndex(index), drawKeyAsList, drawValueAsList);
+            return SerializedHashSetInstanceDrawer.CalculateHeightOfElement(GetPropertyAtIndex(index), drawValueAsList);
         }
     }
 }

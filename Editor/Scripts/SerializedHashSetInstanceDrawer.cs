@@ -23,7 +23,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         private Rect _totalRect;
         private GUIStyle _keyValueStyle;
         private SerializedHashSetAttribute _hashSetAttribute;
-        private HashSetPropertyData _propertyData; // Value not set
+        private HashSetPropertyData _propertyData;
         private bool _propertyListSettingsInitialized = false;
         private List<int> _pagedIndices;
         private PagingElement _pagingElement;
@@ -150,7 +150,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             return property.FindPropertyRelative(SerializedHashSetDrawer.ElementName);
         }
 
-        internal static float CalculateHeightOfElement(SerializedProperty property, bool drawKeyAsList, bool drawValueAsList)
+        internal static float CalculateHeightOfElement(SerializedProperty property, bool drawKeyAsList)
         {
             SerializedProperty elementProperty = property.FindPropertyRelative(SerializedHashSetDrawer.ElementName);
             return SCEditorUtility.CalculateHeight(elementProperty, drawKeyAsList);
@@ -172,7 +172,7 @@ namespace AYellowpaper.SerializedCollections.Editor
             {
                 var genericArgs = _fieldInfo.FieldType.GetGenericArguments();
                 var firstProperty = ListProperty.GetArrayElementAtIndex(0);
-                var keySettings = CreateDisplaySettings(GetElementProperty(firstProperty), genericArgs[fieldFlag == SCEditorUtility.KeyFlag ? 0 : 1]);
+                var keySettings = CreateDisplaySettings(GetElementProperty(firstProperty), genericArgs[0]);
                 var settings = _propertyData.GetElementData().Settings;
                 settings.DisplayType = keySettings.displayType;
                 settings.HasListDrawerToggle = keySettings.canToggleListDrawer;
@@ -182,7 +182,6 @@ namespace AYellowpaper.SerializedCollections.Editor
             {
                 _propertyListSettingsInitialized = true;
                 InitializeSettings(SCEditorUtility.KeyFlag);
-                //InitializeSettings(SCEditorUtility.ValueFlag);
                 SavePropertyData();
             }
         }
@@ -555,7 +554,7 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             int actualIndex = _pagedIndices[index];
             var element = _activeState.GetPropertyAtIndex(actualIndex);
-            return CalculateHeightOfElement(element, _propertyData.GetElementData().EffectiveDisplayType == DisplayType.List ? true : false, _propertyData.GetElementData().EffectiveDisplayType == DisplayType.List ? true : false);
+            return CalculateHeightOfElement(element, _propertyData.GetElementData().EffectiveDisplayType == DisplayType.List ? true : false);
         }
 
         private void OnDrawElement(Rect rect, int index, bool isActive, bool isFocused)
@@ -585,7 +584,6 @@ namespace AYellowpaper.SerializedCollections.Editor
             var elementDisplayData = _propertyData.GetElementData();
             DrawGroupedElement(keyRect, (int)rect.width, elementProperty, elementDisplayData.EffectiveDisplayType);
 
-            //EditorGUI.DrawRect(lineRect, new Color(36 / 255f, 36 / 255f, 36 / 255f));
             GUI.color = prevColor;
         }
 
@@ -662,11 +660,6 @@ namespace AYellowpaper.SerializedCollections.Editor
         {
             _activeState.RemoveElementAt(_pagedIndices[list.index]);
             UpdatePaging();
-            //int actualIndex = _pagedIndices[list.index];
-            //ListProperty.DeleteArrayElementAtIndex(actualIndex);
-            //UpdatePaging();
-            //if (actualIndex >= ListProperty.minArraySize)
-            //    list.index = _pagedIndices.Count - 1;
         }
     }
 }

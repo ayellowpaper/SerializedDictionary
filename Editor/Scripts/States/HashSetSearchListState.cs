@@ -87,9 +87,9 @@ namespace AYellowpaper.SerializedCollections.Editor.States
             return _searchResults[index].Property;
         }
 
-        public override float GetHeightAtIndex(int index, bool drawKeyAsList, bool drawValueAsList)
+        public override float GetHeightAtIndex(int index, bool drawKeyAsList)
         {
-            return base.GetHeightAtIndex(index, drawKeyAsList, drawValueAsList);
+            return base.GetHeightAtIndex(index, drawKeyAsList);
         }
 
         public override void RemoveElementAt(int index)
