@@ -114,6 +114,14 @@ namespace AYellowpaper.SerializedCollections
             return false;
         }
 
+        public new bool Remove(TKey key, out TValue value)
+        {
+            if (!TryGetValue(key, out value))
+                return false;
+
+            return Remove(key);
+        }
+
         public new bool TryAdd(TKey key, TValue value)
         {
             if (base.TryAdd(key, value))
